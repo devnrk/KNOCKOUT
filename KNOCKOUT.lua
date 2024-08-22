@@ -1,8 +1,5 @@
 -- add max fakelag according to server limit
-
--- add automated non desync aa (ai jitter?)
 -- add visually appealing indicators?
--- improve logs (add more details in console and simplify top left logs) 
 -- aa stealer (with freestanding checks and option to steal on peek)
 
 -- loading some great libraries from marketplace. I do NOT take any credit for these libraries. All thanks to their developers.
@@ -20,6 +17,9 @@ ffi.cdef[[
 	int PlaySoundA(const char *pszSound, void *hmod, int fdwSound);
 	int remove(const char *filename);
 ]]
+
+
+
 
 -- for playing sounds
 --local winmm = ffi.load("winmm")
@@ -172,8 +172,8 @@ local cheatmenu = {
 }
 
 -- MENU   
-local default_primary_theme = color(255, 110, 110)
-local default_secondary_theme = color(255, 255, 255)
+local default_primary_theme = color(31, 109, 255)
+local default_secondary_theme = color(255, 110, 110)
 
 ui.sidebar("KNOCKOUT", ui.get_icon("boxing-glove"))
 local main_info_group = pui.create("Main", "Script Info", 1)
@@ -245,7 +245,7 @@ local menuitems = {
 	
 	auto_tp = group_EXPLOITS_3:switch("AUTO TP", false, function(gear)
 		local elements = {
-			type_of_tp = gear:list('Type', {"Basic", "Advanced (experimental)"}),
+			type_of_tp = gear:list('Type', {"Basic", "Before landing"}),
 		}
 		
 		return elements, true
@@ -296,9 +296,17 @@ local menuitems = {
 	killsay_enable = group_misc_A:switch("Kill Say", false),
 	yallah_yallah = group_misc_A:switch("Hide Shots Ideal Tick", false),
     leg_fucker = group_misc_A:switch("Leg Breaker", false),
-    logging_shot = group_misc_B:switch("Aimbot Logs"),
-    logging_death = group_misc_B:switch("Death Logs", false),
-    logging_loc = group_misc_B:listable("Type", {"Top-Left Event", "CS:GO Console"}),
+
+	logs_enable = group_misc_B:switch("Enable Logging", false, function(gear)
+		local elements = {
+			aimbot = gear:switch("Log Aimbot Shots", false),
+			death = gear:switch("Log Local Death Info", false),
+			complexity = gear:combo('Complexity', {"Simplistic", "Detailed"}),
+			location = gear:selectable('Location', {"Top Left", "Console"}),
+		}
+
+		return elements, true
+	end),
 
 	enable_conditional_aa = group_conditional_states:switch("Conditional AA", false),
     select_aa_state = group_conditional_states:combo("State", {"None", definitions.player_states.STAND, definitions.player_states.WALK, definitions.player_states.RUN, definitions.player_states.CROUCH, definitions.player_states.AIR_CROUCH, definitions.player_states.AIR}),
@@ -387,8 +395,8 @@ menuitems.auto_tp_about_btn:set_callback(function(self)
 	self:visibility(false)
 end)
 
-local logging_shot_color = menuitems.logging_shot:color_picker(default_primary_theme)
-local logging_death_color = menuitems.logging_death:color_picker(default_secondary_theme)
+local logging_shot_color = menuitems.logs_enable.aimbot:color_picker(default_primary_theme)
+local logging_death_color = menuitems.logs_enable.death:color_picker(default_secondary_theme)
 
 -- extra menu items for sub tabs or gear icons"
 
@@ -1050,25 +1058,23 @@ function run_defensive_aa(cmd, in_air)
 			-- if fake ducking do nothing
 			if not cheatmenu.get_fakeduck:get() then
 				local triggers = menuitems.defensive_aa_triggers
-				
+				-- in air check
+				if triggers:get(1) and not in_air then return end
+				-- threat check
+				if triggers:get(2) and entity.get_threat(true) == nil then return end
 
-				-- another quick check sorry !
 				-- disablers check (on knfie out)
 				if menuitems.defensive_aa.disablers:get(1) and get_weapon_name(definitions.localplayer()) == 'weapon_knife' then return end
 				-- disablers check (on fake lag)
 				if menuitems.defensive_aa.disablers:get(2) and (not cheatmenu.Double_tap:get() and not cheatmenu.Hide_shot:get()) and cheatmenu.get_fakelag:get() then return end
-				-- condition check
+
 				if menuitems.defensive_aa.force_defensive:get() then
 					cmd.force_defensive = true
 				end
 				
-				if triggers:get(1) and not in_air then return end
-				if triggers:get(2) and entity.get_threat(true) == nil then return end
-				
-				if globals.tickcount % 3 == 0 then
+				if globals.tickcount % 2 == 0 then
 					-- our flick var
 					definitions.jitter_side = definitions.jitter_side * -1 -- this var always returns either 1 or -1. So you can think of it as ON and OFF.
-
 					-- pitch
 					if menuitems.defensive_aa_pitch_enable:get() then
 						if menuitems.defensive_aa_pitch_enable.defensive_aa_pitch_angle:get() == 'Custom' then
@@ -1108,11 +1114,7 @@ function run_defensive_aa(cmd, in_air)
     end
 end
 
-
-
 -- function to check our inventory
-
-
 function do_I_have_taser()
 	local inventory = definitions.localplayer():get_player_weapon(true)
 	for i in pairs(inventory) do
@@ -1123,7 +1125,6 @@ function do_I_have_taser()
 	end
 	return inventory[2]:get_weapon_info().weapon_name
 end
-
 
 function run_safety_swap()
 	  -- SAFETY SWAP GUN
@@ -1136,7 +1137,6 @@ function run_safety_swap()
 			local my_origin = definitions.localplayer():get_origin()
 			local enemy_origin = closest_enemy:get_origin()
 			local my_dist_to_enemy = enemy_origin:dist(my_origin)
-			
 			
 			-- if the enemy is in range
 			if my_dist_to_enemy < menuitems.switch_safe_taser.range:get() then
@@ -1176,9 +1176,9 @@ local check_for_tp_after_air_duration = 0.2 -- how long after we jump or are in 
 local tp_once = true
 local visual_trace_color = color(255)
 
-function run_auto_tp(in_air, cmd)
+function run_auto_tp(in_air)
 	if menuitems.auto_tp:get() then
-		--[[if menuitems.auto_tp.type_of_tp:get() == 1 then
+		if menuitems.auto_tp.type_of_tp:get() == 1 then
 			if in_air and entity.get_threat(true) then
 				if tp_once then
 					rage.exploit:force_teleport()
@@ -1216,33 +1216,6 @@ function run_auto_tp(in_air, cmd)
 			else
 				our_trace_z_offset = 0
 			end
-		end]]
-		
-		
-		-- new TP
-		-- fuck that shit we balling with just shifting ticks
-		if entity.get_threat(true) then
-			if in_air then
-				if tp_once then
-					if menuitems.auto_tp.type_of_tp:get() == 1 then
-						rage.exploit:force_teleport()
-					elseif menuitems.auto_tp.type_of_tp:get() == 2 then
-						cheatmenu.Double_tap:override(false)
-					end
-					tp_once = false
-				end
-			else
-				tp_once = true
-				--only force below if bind is active
-				if menuitems.auto_tp.type_of_tp:get() == 2 then
-					cheatmenu.Double_tap:override()
-				end
-			end
-		else
-			tp_once = true
-			if menuitems.auto_tp.type_of_tp:get() == 2 then
-				cheatmenu.Double_tap:override()
-			end
 		end
 	end
 end
@@ -1274,7 +1247,6 @@ function run_anti_bruteforce()
 		end
 	end
 
-	
 	-- if we are dead or if the guy who shot is not who we just saw 
 	if entity_that_shot ~= who_we_met_first then
 		--render_impact = false 
@@ -1373,32 +1345,28 @@ local spin_factor = 0
 
 local function run_non_desync_aa(in_air, cmd)
 
-	if cmd.in_attack == 0 and not nade_held() and definitions.localplayer():get_anim_state().ladder_speed <= 0 and not menuitems.defensive_aa:get() then
+	if menuitems.aa_experiment:get() then
+
+		if cmd.in_attack == 1 or nade_held() or definitions.localplayer():get_anim_state().ladder_speed <= 0 or menuitems.defensive_aa:get() then 
+			cheatmenu.get_antiaim:override()
+			return 
+		end
 
 		cheatmenu.get_antiaim:override(false)
 		
-		local cur_target = nil 
-		
-		if entity.get_threat(true) ~= nil then
-			cur_target = entity.get_threat(true)
-		else
-			cur_target = entity.get_threat()
-		end
+		local cur_target = entity.get_threat()
 
-		
 		if cur_target ~= nil then
 		
-			-- getting at target
-			
+			-- getting at target yaw
 			local enemy_pos = cur_target:get_origin()
 			local direction = enemy_pos - definitions.localplayer():get_origin()
 			local target_yaw = math.deg(math.atan2(direction.y, direction.x))
-			
 			target_yaw = target_yaw + 180
-			--print_dev(target_yaw, " for ", cur_target:get_name())
-			
+
+			-- setting pitch
 			cmd.view_angles.x = 89
-			-- desync modifiers
+			
 			if menuitems.aa_experiment.Type:get() == 1 then
 				-- distortion
 				if distortion_cur_angle > distortion_minmax[2] then
@@ -1458,6 +1426,13 @@ local function run_non_desync_aa(in_air, cmd)
 				cheatmenu.rightlimit:override(math.random(10, 50))
 				cheatmenu.leftlimit:override(math.random(10, 50))
 			end
+
+			-- run some smart anti aim logic
+			-- check for priority target
+			local priority = cur_target == entity.get_threat()
+
+
+			
 		else
 			cmd.view_angles.y = cmd.view_angles.y + 180
 		end
@@ -1508,26 +1483,19 @@ events.createmove:set(function(cmd)
 		return 
 	end
 	
-	cmd.force_defensive = true
-	
 	local prop = definitions.localplayer()["m_fFlags"]
     local in_air = (prop == 256 or prop == 262)
 
 	run_ragebot_fps_fix()
 	run_disable_rendering_models(menuitems.fps_fix.mitigations)
-
-	if menuitems.aa_experiment:get() then
-		run_non_desync_aa(in_air, cmd)
-	end
-
-
+	run_non_desync_aa(in_air, cmd)
     run_air_lag(in_air)
 	run_nade_fix()
 	run_leg_breaker()
 	run_update_conditional_aa()
 	run_defensive_aa(cmd, in_air)
 	run_safety_swap()
-	run_auto_tp(in_air, cmd)
+	run_auto_tp(in_air)
 	--run_aa_stealer(cmd, in_air)
 end)
 
@@ -1553,8 +1521,8 @@ end
 
 
 function run_shot_logs(e)
-    if menuitems.logging_shot:get() then
-	
+    if menuitems.logs_enable.aimbot:get() then
+		local log_color = logging_shot_color:get():to_hex()
         local shot_entity = e.target
         local shot_entity_health_remaining = e.target["m_iHealth"]
         local shot_dmg = e.damage
@@ -1564,6 +1532,7 @@ function run_shot_logs(e)
         local shot_wanted_damage = e.wanted_damage
         local miss_reason = e.state
 
+		-- checking for enemy's name to not be too long.
         if string.len(shot_entity:get_name()) >= 15 then
             toolong_logname = string.sub(shot_entity:get_name(), 1, 15) .. "..."
         else
@@ -1573,40 +1542,43 @@ function run_shot_logs(e)
         shot_hitbox = definitions.hitboxes[e.hitgroup]
 
         if shot_hitbox == nil then
-            shot_hitbox = "???"
+            shot_hitbox = "generic"
         end
 
-        if miss_reason == nil then ----------------------------- HIT
-            -- set hit/miss var to hit
-            hit_miss = "HIT "
+          -- set hit/miss var
+		local hit_miss = miss_reason == nil and "HIT " or "MISSED "
 
-            -- adding the rest of the log if shot is hit
-            hit_miss_continue = definitions.white .. " For " .. "\a" .. logging_shot_color:get():to_hex() .. shot_dmg .. definitions.white .. " | Wanted Damage: " .. "\a" .. logging_shot_color:get():to_hex() .. shot_wanted_damage .. definitions.white .. " | HC: " .. "\a" .. logging_shot_color:get():to_hex() .. shot_hitchance .. "%" .. definitions.white .. " | Backtrack: " .. "\a" .. logging_shot_color:get():to_hex() .. shot_BT .. " TICKS" .. definitions.white .. " | " .. "\a" .. logging_shot_color:get():to_hex() .. shot_entity_health_remaining .. definitions.white .." Health."
+		local log_prefix = definitions.white .. "KNOCKOUT: " .. "\a" .. log_color .. hit_miss .. definitions.white
 
-            if menuitems.logging_loc:get(1) then
-                common.add_event(definitions.white .. "KNOCKOUT: " .. "\a" .. logging_shot_color:get():to_hex() .. hit_miss ..definitions.white.. toolong_logname .. "'s ".. "\a" .. logging_shot_color:get():to_hex() .. shot_hitbox .. tostring(hit_miss_continue))
-            end
+		local log_string = ""
 
-            if menuitems.logging_loc:get(2) then
-                print_raw(definitions.white .. "KNOCKOUT: " .. "\a" .. logging_shot_color:get():to_hex() .. hit_miss ..definitions.white.. toolong_logname .. "'s ".. "\a" .. logging_shot_color:get():to_hex() .. shot_hitbox .. tostring(hit_miss_continue))
-            end
-
-        else --------------------------------- MISSED
-
-            hit_miss = "MISSED "
-            
-            hit_miss_continue = definitions.white .. " due to " .. "\a" .. logging_death_color:get():to_hex() .. string.upper(miss_reason) .. definitions.white ..  " | " .. "\a" .. logging_shot_color:get():to_hex() .. " HC: " .. shot_hitchance .. "%."
-            if menuitems.logging_loc:get(2) then
-                print_raw(definitions.white .. "KNOCKOUT: " .. "\a" .. logging_shot_color:get():to_hex() .. hit_miss .. definitions.white .. "shot" .. tostring(hit_miss_continue))
-            end 
-
-            if menuitems.logging_loc:get(1) then
-                common.add_event(definitions.white .. "KNOCKOUT: " .. "\a" .. logging_shot_color:get():to_hex() .. hit_miss .. definitions.white .. "shot" .. tostring(hit_miss_continue))
-            end
+        if hit_miss == "HIT " then ----------------------------- IF WE HIT SHOT
+			-- combining the rest of the log string
+			-- checking how detailed the log should be
+			if menuitems.logs_enable.complexity:get() == "Simplistic" then
+				log_string = log_prefix .. toolong_logname .. "'s ".. "\a" .. log_color .. shot_hitbox .. definitions.white .. " For " .. "\a" .. log_color .. shot_dmg .. definitions.white
+			elseif menuitems.logs_enable.complexity:get() == "Detailed" then
+				log_string = log_prefix .. toolong_logname .. "'s ".. "\a" .. log_color .. shot_hitbox .. definitions.white .. " For " .. "\a" .. log_color .. shot_dmg .. definitions.white .. " | Wanted Damage: " .. "\a" .. log_color .. shot_wanted_damage .. definitions.white .. " | Hitchance: " .. "\a" .. log_color .. shot_hitchance .. "%" .. definitions.white .. " | Backtracked: " .. "\a" .. log_color .. shot_BT .. " Ticks" .. definitions.white .. " | " .. "\a" .. log_color .. shot_entity_health_remaining .. definitions.white .. " Health Remaining."
+			end
+        else --------------------------------- IF WE MISSED SHOT
+            -- combining the rest of the log string
+			-- checking how detailed the log should be
+			if menuitems.logs_enable.complexity:get() == "Simplistic"  then
+				log_string = log_prefix .. toolong_logname .. "'s ".. "\a" .. log_color .. shot_hitbox .. definitions.white .. " due to " .. "\a" .. logging_death_color:get():to_hex() .. string.upper(miss_reason) .. definitions.white .. "."
+			elseif menuitems.logs_enable.complexity:get() == "Detailed"  then
+				log_string = log_prefix .. toolong_logname .. "'s ".. "\a" .. log_color .. shot_hitbox .. definitions.white .. " due to " .. "\a" .. logging_death_color:get():to_hex() .. string.upper(miss_reason) .. definitions.white ..  " | " .. "\a" .. log_color .. " Hitchance: " .. shot_hitchance .. "%."
+			end
         end
 
-        -- spacing
-        print_raw("")
+		if menuitems.logs_enable.location:get(1) then
+			common.add_event(log_string)
+		end
+
+		if menuitems.logs_enable.location:get(2) then
+			print_raw(log_string)
+			-- spacing
+			print("")
+		end 
     end
 end
 
@@ -1621,9 +1593,9 @@ end)
 
 local function run_death_logs(e)
 
-    if definitions.localplayer() == nil then return end
+    if menuitems.logs_enable.death:get() then
 
-    if menuitems.logging_death:get() then
+		local log_color = logging_death_color:get():to_hex()
 	
         local event_info = {
             MYuserid = definitions.localplayer():get_player_info()['userid'],
@@ -1638,12 +1610,9 @@ local function run_death_logs(e)
 
         -- enemy info
         local enemy = entity.get(event_info.attacker, true)
-        if enemy == nil then return end
         local enemy_info = {
             enemy_name = enemy:get_name(),
-            enemy_anim_state = enemy:get_anim_state(), -- VERY IMPORTANT -- table
-            enemy_anim_overlay = enemy:get_anim_overlay(), -- table
-            enemy_steam_avatar = enemy:get_steam_avatar(),
+            enemy_anim_state = enemy:get_anim_state(),
             enemy_origin = enemy:get_origin()
         }
   
@@ -1654,38 +1623,26 @@ local function run_death_logs(e)
             toolong_logname_death = enemy_info.enemy_name
         end
 
+		local str_hs_baim = event_info.was_headshot and "Headshoting" or "Baiming"
         --- the actual LOGGING ---
-        if event_info.died_userid == event_info.MYuserid then -- main local death condition
-            if event_info.was_headshot then
-                str_hs_baim = "Headshoting"
-            else
-                str_hs_baim = "Baiming"
-            end
+		-- no complexity for death logs
+		local death_log = definitions.white .. "KNOCKOUT: " .. "\a" .. log_color .. "DEATH " .. definitions.white .. "from " .. toolong_logname_death .. "\a" .. log_color .. " " .. str_hs_baim  .. definitions.white .." you with " .. string.upper(event_info.weapon_used_to_kill) .. " from " .. math.floor(event_info.distance_to_me) .." meters away."
 
-            -- pre defining our log string here
-
-            str_log = definitions.white .. "KNOCKOUT: " .. "\a" .. logging_death_color:get():to_hex() .. "DEATH " ..definitions.white.. "from "  .. definitions.white .. toolong_logname_death .. "\a" .. "\a" .. logging_death_color:get():to_hex() .. " " .. str_hs_baim  .. definitions.white .." you with " .. string.upper(event_info.weapon_used_to_kill) .. " from " .. math.floor(event_info.distance_to_me) .." meters away."
-            if menuitems.logging_loc:get(1) then
-                common.add_event(str_log)
-            end
-            if menuitems.logging_loc:get(2) then
-
-                print_raw(str_log)
-            end
-            -- spacing
-            print_raw("")
-            print_raw("")
-        end
+		if menuitems.logs_enable.location:get(1) then
+			common.add_event(death_log)
+		end
+		if menuitems.logs_enable.location:get(2) then
+			print_raw(death_log)
+			-- spacing
+			print("")
+		end
     end
 end
 -- killsay
 events.player_death:set(function(e)
-
-    run_death_logs(e)
-	
 	local who_died = entity.get(e.userid, true)
-	
 	if who_died == definitions.localplayer() then
+		run_death_logs(e)
 		definitions.bruteforce_counter = 0
 		bullet_start_pos = nil
 		bullet_end_pos = nil
