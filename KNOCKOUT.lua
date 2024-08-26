@@ -179,18 +179,18 @@ ui.sidebar("KNOCKOUT", ui.get_icon("boxing-glove"))
 local main_info_group = pui.create("Main", "Script Info", 1)
 local group_home = pui.create("Main", "Helpers", 2)
 local group_ragehelpers = pui.create("Rage", "Helpers", 1)
-local group_defensive = pui.create("Defensive", "Defensive Anti Aim", 1)
-local group_defensive_autopull = pui.create("Defensive", "Auto Swap", 2)
+local group_defensive = pui.create("Defensive", "Defensive Anti-Aim Options", 1)
+local group_defensive_autopull = pui.create("Defensive", "Tazer and Knife Saftey", 2)
 --local group_anti_bruteforce_A = pui.create("Anti Bruteforce", "Master", 1)
 --local group_anti_bruteforce_B = pui.create("Anti Bruteforce", "Shot Manager", 2)
 
-local group_EXPLOITS = pui.create("Exploits", "AIR LAG", 1)
-local group_EXPLOITS_2 = pui.create("Exploits", "Anti Exploit", 2)
-local group_EXPLOITS_3 = pui.create("Exploits", "Auto Teleport", 2)
+local group_EXPLOITS = pui.create("Exploits", "Air Lag", 1)
+local group_EXPLOITS_2 = pui.create("Exploits", "Anti-Exploit", 2)
+local group_EXPLOITS_3 = pui.create("Exploits", "Automatic-Teleport", 2)
 
-local group_conditional_states = pui.create("Conditional AA","Player States", 1)
-local group_aa_stealer = pui.create("Anti Aim Stealer","Steal that bitch", 1)
-local group_aa_experiment = pui.create("Experimental Anti Aim","---", 1)
+local group_conditional_states = pui.create("Conditional-AA","Player States", 1)
+local group_aa_stealer = pui.create("Anti-Aim Stealer","Steal that bitch", 1)
+local group_aa_experiment = pui.create("Experimental Anti-Aim","---", 1)
 
 local group_visuals_general = pui.create("Visuals [lite]", "A", 1)
 local group_misc_A = pui.create("Miscellaneous","A", 1)
@@ -205,10 +205,10 @@ local group_configs_import_export = ui.create("Configuration","Import or Export 
 local menuitems = {
     -- home
     notice_build = main_info_group:label(definitions.lua_build),
-    more_label = main_info_group:label('Have an bugs/issues you would like to report? Add me on discord and send me a DM. I will try to look at it ASAP. @devnrk'),
+    more_label = main_info_group:label('Have any bugs/issues you would like to report? Add me on discord and send me a DM. I will try to look at it ASAP. @devnrk'),
 	
 	
-	configs_list = group_configs_list:combo("My Configs", definitions.current_configs),
+	configs_list = group_configs_list:combo("Found Configs", definitions.current_configs),
 	configs_currently_loaded = group_configs_list:label("Currently loaded: None"),
 	
 	configs_name = group_configs_create_delete:input("Config name"),
@@ -226,26 +226,26 @@ local menuitems = {
 	nade_fix_about_btn = group_home:button("What's this?"),
 	
 	
-	fps_fix = group_home:switch("FPS mitigations", false, function(gear)
+	fps_fix = group_home:switch("FPS Enhancement", false, function(gear)
 		local elements = {
-			mitigations = gear:listable('Mitigate', {"Limit Aimbot Targets", "Disable localplayer rendering", "Disable teammates rendering"}),
+			mitigations = gear:listable('Mitigate', {"Reduced target scanning", "Disable localplayer rendering", "Disable teammate rendering"}),
 		}
 		return elements, true
 	end),
 
 	aspect_ratio = group_home:slider('Aspect Ratio', 0, 50, 0.0, 0.1),
 	
-	rage_helpers = group_ragehelpers:switch("Help my ragebot", false),
+	rage_helpers = group_ragehelpers:switch("Enhance Ragebot", false),
 
-    exploit_l1 = group_EXPLOITS:label("Perfectly break LC. Jump with Double Tap enabled. Lower your ping , the better."),
+    exploit_l1 = group_EXPLOITS:label("Perfectly break LC. Jump with Double Tap enabled. Low ping required."),
 	exploit_tutorial = group_EXPLOITS:button(ui.get_icon("youtube") .." Exploit Showcase", function()
         require("neverlose/mtools").Panorama:OpenLink("https://www.youtube.com/watch?v=TBAvlJlRaq4&pp=ygUKdmFuaXR5IGh2aA%3D%3D")
     end),
-    ourexploit = group_EXPLOITS:switch("AIR LAG (BIND THIS)", false),
+    ourexploit = group_EXPLOITS:switch("Air Lag (Bindable)", false),
 	
-	auto_tp = group_EXPLOITS_3:switch("AUTO TP", false, function(gear)
+	auto_tp = group_EXPLOITS_3:switch("Teleport", false, function(gear)
 		local elements = {
-			type_of_tp = gear:list('Type', {"Basic", "Before landing"}),
+			type_of_tp = gear:list('Type', {"Default", "DT Slam"}),
 		}
 		
 		return elements, true
@@ -255,29 +255,29 @@ local menuitems = {
 	
     defensive_aa = group_defensive:switch("Defensive AA", false, function(gear)
 		local elements = {
-			disablers = gear:listable('Disablers', {"On knife", "On fakelag"}),
+			disablers = gear:listable('Disable', {"On knife", "On fakelag"}),
 			force_defensive = gear:switch('Force Defensive', true),
 		}
 		
 		return elements, true
 	end),
-    defensive_aa_triggers = group_defensive:listable("Triggers", {"In air", "On Threat (recommended)"}),
+    defensive_aa_triggers = group_defensive:listable("Triggers", {"In air", "Threat Detected (recommended)"}),
 	defensive_aa_pitch_enable = group_defensive:switch("Modify Pitch", false, function(gear)
 		local elements = {
-			defensive_aa_pitch_angle = gear:combo('Angle to flick', {'Disabled', 'Down', 'Fake Up', 'Random', 'Custom'}),
+			defensive_aa_pitch_angle = gear:combo('Flick Angle', {'Disabled', 'Down', 'Fake Up', 'Random', 'Custom'}),
 			defensive_aa_pitch_custom_angle = gear:slider('Custom angle', -89.0, 89.0, 0.0, 1.0)
 		}
 		return elements, true
 	end),
 	defensive_aa_yaw_enable = group_defensive:switch("Modify Yaw", false, function(gear)
 		local elements = {
-			defensive_aa_yaw_angle = gear:combo('Angle to flick', {'45', '90', '180', 'Spin', 'Random', 'Custom'}),
+			defensive_aa_yaw_angle = gear:combo('Flick Angle', {'45', '90', '180', 'Spin', 'Random', 'Custom'}),
 			defensive_aa_yaw_custom_angle = gear:slider('Custom angle', -180, 180, 0, 1),
 		}
 		return elements, true
 	end),
 	
-    switch_safe_taser = group_defensive_autopull:switch("Auto Swap", false, function(gear)
+    switch_safe_taser = group_defensive_autopull:switch("Saftey", false, function(gear)
 		local elements = {
 			equip_items = gear:combo("Item to equip", {"Taser (falls back to secondary if not available)", "Next Available (any weapon)"}),
 			range = gear:slider("Range within", 10, 2000, 500, 1),
@@ -294,15 +294,15 @@ local menuitems = {
 		return elements, true
 	end),
 	killsay_enable = group_misc_A:switch("Kill Say", false),
-	yallah_yallah = group_misc_A:switch("Hide Shots Ideal Tick", false),
-    leg_fucker = group_misc_A:switch("Leg Breaker", false),
+	yallah_yallah = group_misc_A:switch("Ideal Tick on shift", false),
+    leg_fucker = group_misc_A:switch("Break LBY", false),
 
-	logs_enable = group_misc_B:switch("Enable Logging", false, function(gear)
+	logs_enable = group_misc_B:switch("Aimbot Logging", false, function(gear)
 		local elements = {
-			aimbot = gear:switch("Log Aimbot Shots", false),
-			death = gear:switch("Log Local Death Info", false),
-			complexity = gear:combo('Complexity', {"Simplistic", "Detailed"}),
-			location = gear:selectable('Location', {"Top Left", "Console"}),
+			aimbot = gear:switch("Ragebot", false),
+			death = gear:switch("Death", false),
+			complexity = gear:combo('Detail', {"Default", "Detailed"}),
+			location = gear:selectable('Location', {"Log", "Console"}),
 		}
 
 		return elements, true
@@ -314,10 +314,10 @@ local menuitems = {
 	
 	under_crosshair = group_visuals_general:switch("Under Crosshair", false),
 	
-	world_hitmarker = group_visuals_general:switch("World hitmarker", false, function(gear)
+	world_hitmarker = group_visuals_general:switch("World Hitmarker", false, function(gear)
 		local elements = {
 			world_hitmarker_width = gear:slider('Width', 1, 5, 0.2, 0.1),
-			world_hitmarker_speed = gear:slider('Speed', 1, 5, 0.1, 0.1),
+			world_hitmarker_speed = gear:slider('Fade Time', 1, 5, 0.1, 0.1),
 			world_hitmarker_length = gear:slider('Length', 1, 500, 250, 1),
 			world_hitmarker_color = gear:color_picker("Color", default_primary_theme),
 			world_hitmarker_glow = gear:switch("Glow", false),
@@ -332,7 +332,7 @@ local menuitems = {
 			gapx = gear:slider('Offset X', 0, definitions.screen_size().x/2, 50, 1),
 			gapy = gear:slider('Offset Y', 0, definitions.screen_size().y/2, 50, 1),
 			offset = gear:slider('Width', 10, 500, 10, 1),
-			sync_gap = gear:button("Sync X & Y Offset"),
+			sync_gap = gear:button("Automatic Alignment"),
 		}
 		return elements, true
 	end),
@@ -340,7 +340,7 @@ local menuitems = {
 	--aa_steal = group_aa_stealer:switch('Steal Enemy Anti Aim', false),
 	aa_experiment = group_aa_experiment:switch("Enable Experimental AA", false, function(gear)
 		local elements = {
-			Type = gear:list("Preset Type", {"Distortion", "Better Jitter", "Spinbot", "Sway Desync", "Randomized Desync"})
+			Type = gear:list("Preset Type", {"Distort", "Jitter", "Spin", "Sway Desync", "Randomized Desync"})
 		}
 		return elements, true
 	end),
@@ -1555,7 +1555,7 @@ function run_shot_logs(e)
         if hit_miss == "HIT " then ----------------------------- IF WE HIT SHOT
 			-- combining the rest of the log string
 			-- checking how detailed the log should be
-			if menuitems.logs_enable.complexity:get() == "Simplistic" then
+			if menuitems.logs_enable.complexity:get() == "Default" then
 				log_string = log_prefix .. toolong_logname .. "'s ".. "\a" .. log_color .. shot_hitbox .. definitions.white .. " For " .. "\a" .. log_color .. shot_dmg .. definitions.white
 			elseif menuitems.logs_enable.complexity:get() == "Detailed" then
 				log_string = log_prefix .. toolong_logname .. "'s ".. "\a" .. log_color .. shot_hitbox .. definitions.white .. " For " .. "\a" .. log_color .. shot_dmg .. definitions.white .. " | Wanted Damage: " .. "\a" .. log_color .. shot_wanted_damage .. definitions.white .. " | Hitchance: " .. "\a" .. log_color .. shot_hitchance .. "%" .. definitions.white .. " | Backtracked: " .. "\a" .. log_color .. shot_BT .. " Ticks" .. definitions.white .. " | " .. "\a" .. log_color .. shot_entity_health_remaining .. definitions.white .. " Health Remaining."
@@ -1563,7 +1563,7 @@ function run_shot_logs(e)
         else --------------------------------- IF WE MISSED SHOT
             -- combining the rest of the log string
 			-- checking how detailed the log should be
-			if menuitems.logs_enable.complexity:get() == "Simplistic"  then
+			if menuitems.logs_enable.complexity:get() == "Default"  then
 				log_string = log_prefix .. toolong_logname .. "'s ".. "\a" .. log_color .. shot_hitbox .. definitions.white .. " due to " .. "\a" .. logging_death_color:get():to_hex() .. string.upper(miss_reason) .. definitions.white .. "."
 			elseif menuitems.logs_enable.complexity:get() == "Detailed"  then
 				log_string = log_prefix .. toolong_logname .. "'s ".. "\a" .. log_color .. shot_hitbox .. definitions.white .. " due to " .. "\a" .. logging_death_color:get():to_hex() .. string.upper(miss_reason) .. definitions.white ..  " | " .. "\a" .. log_color .. " Hitchance: " .. shot_hitchance .. "%."
