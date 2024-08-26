@@ -29,3 +29,4 @@ Features:
 - Word Hitmarker
 - Custom Scope
 - Anti-Bruteforce (disabled)
+- Auto-Saftey (automatically swaps to pistol to prevent stab or tazer)
