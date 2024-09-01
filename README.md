@@ -1,5 +1,5 @@
 # KNOCKOUT.lua
-![Script banner image](/KNOCKOUT/knockout%20banner.jpg)
+![Script banner image](./knockout_banner.jpg)
 
 Dominate HVH with Precision Strikes using our simple and effective script.
 
