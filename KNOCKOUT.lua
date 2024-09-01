@@ -1,13 +1,8 @@
--- add max fakelag according to server limit
--- add visually appealing indicators?
--- aa stealer (with freestanding checks and option to steal on peek)
--- maybe add a cheat spoofer?
-
+-- KNOCKOUT
 
 -- loading some great libraries from marketplace. I do NOT take any credit for these libraries. All thanks to their developers.
 local base64 = require("neverlose/base64")
 local clipboard = require ("neverlose/clipboard")
---local gradient = require("neverlose/gradient")
 local pui = require("neverlose/pui") 
 local ffi = require("ffi")
 
@@ -15,48 +10,55 @@ ffi.cdef[[
     typedef void* HWND;
     HWND FindWindowA(const char* lpClassName, const char* lpWindowName);
     int FlashWindow(HWND hWnd, int bInvert);
-    void *GetModuleHandleA(const char *lpModuleName);
-	int PlaySoundA(const char *pszSound, void *hmod, int fdwSound);
-	int remove(const char *filename);
 ]]
 
--- for playing sounds
---local winmm = ffi.load("winmm")
-
-local killsays = {
-	"No fucking lua will ever save your ass from that pathetic playstyle.",
-	"Fuck your cheat, fuck your lua. You're either using KNOCKOUT.lua or you're not. Choice is always yours.",
-	"Now don't start typing an excuse in the chat. You LOST because you're simply incompetent.",
-    "Out cold. Knockout delivered. Just use knockout already bro. It's literally FREE.",
-	"You just met the knockout punch.",
-	"Lights out. Better luck next time.",
-	"One punch, one knockout.",
-	"KO'd like a champ.",
-	"Knocked out of the fucking game.",
-	"Sleep tight. You've been knocked out.",
-	"Game over. Knockout.lua victory?",
-	"Consider yourself knocked the fuck out."
-}
-
 local definitions = {
-	lua_build = "[dev build] 09/06/2024 - v1.5",
+
+	-- globals
+	lua_build = "dev build (v0.6)",
     localplayer = entity.get_local_player,
-    screen_size = render.screen_size, -- always use this to scale according to screen resolution
+    screen_size = render.screen_size,
     username = common.get_username,
     white = "\aFFFFFFFF",
     hitboxes = {[0] = 'GENERIC','HEAD', 'CHEST', 'STOMACH','LEFT ARM', 'RIGHT ARM','LEFT LEG', 'RIGHT LEG','NECK', 'GENERIC', 'GEAR'},
+	clantag = "KNOCKOUT",
+    clantag_index = 0,
+
+	-- killsays
+	killsays = {
+		"No fucking lua will ever save your ass from that pathetic playstyle.",
+		"Fuck your cheat, fuck your lua. You're either using KNOCKOUT.lua or you're not. Choice is always yours.",
+		"You LOST because you're simply incompetent. Should've used KNOCKOUT.lua.",
+		"Out cold. Knockout delivered. Just use knockout already bro. It's literally FREE.",
+		"You just met the knockout punch.",
+		"Lights out. Better luck next time.",
+		"Resolved. Knocked out.",
+		"KO'd like a champ.",
+		"Knocked out of the fucking game.",
+		"Sleep tight. You've been knocked out.",
+		"Game over. KNOCKOUT.lua victory?",
+		"Consider yourself knocked the fuck out.",
+		"Avoid the loss. Use KNOCKOUT.lua at github.com/devnrk/KNOCKOUT",
+	},
+
+	default_primary_theme = color(31, 109, 255),
+	default_secondary_theme = color(255, 110, 110),
+
+	-- some random vars
     jitter_side = 1,
     target,
     i_shot,
     aimbot_shot_to_enemy = true,
     alreadypulledtaser = 0,
-    clantag = "KNOCKOUT",
-    clantag_index = 0,
+
+	-- for player dormancy state
     player_dormancies = {
 		CHEAT_CONFIDENCE = "Dormant - Cheat 100% confidence",
 		SOUNDS = "Dormant - Sounds",
 		DATA_EXPIRED = "Dormant - Data expired"
     },
+
+	-- for player state
     player_states = {
 		STAND = "Standing",
 		WALK = "Walking",
@@ -73,27 +75,67 @@ local definitions = {
 		AIR_CROUCH,
 		AIR
     },
-	shot_fired = 0,
-	-- vars below are used by the "render_world_hitmarker" function to render the world hitmarker
+
+	-- for auto tp
+	tp_once = true,
+	our_trace_z_offset = 0,
+	check_for_tp_after_air_duration = 0.2, -- how long after we jump or are in air that the teleport logic should run.
+	
+	-- for hitmarker
+	new_lines_from_random_directions = {},
+	new_random_directions = {},
+	render_impact = false,
+	extending = true,
 	aim_points = nil,
 	num_of_lines = 15,
 	start_line_offset = 2,
 	start_line_length = 0,
 	end_line_length = 0,
 	shot_hitbox = nil,
+
+	-- for indicators
+	all_indicators = {
+		"[DEV]  KNOCKOUT",
+		"DT",
+		"HS",
+	},
+
+	-- for ui and configs
 	current_configs = {},
 	get_menu_alpha = ui.get_alpha,
 	get_menu_size = ui.get_size,
 	get_menu_pos = ui.get_position,
-	-- variable to keep track for defensive spin yaw
-	spin_angle = 0,
+
+	-- for fps mtigations
 	localplayer_materials = materials.get_materials("neverlose/self"),
 	team8s_materials = materials.get_materials("neverlose/teammates"),
 	enemies_materials = materials.get_materials("neverlose/enemies"),
 	team8s_weapon_materials = materials.get_materials("neverlose/teammates/weapon"),
+
+	-- for non desync custom anti aim
+	sway_add_desync = 0,
+	sway_add_factor = 5,
+	old_angles = {},
+	jitter_idx = 1,
+	distortion_minmax = {-40, 40},
+	distortion_cur_angle = 0,
+	swing_right = false,
+	spin_factor = 0,
+
+	-- To keep track ofdefensive spin yaw
+	spin_angle = 0,
+
+	-- for anti bruteforce
 	bruteforce_counter = 0,
 	anti_bruteforce_shots = {},
-
+	entity_that_shot = nil,
+	vec_from_enemy_to_me = nil,
+	magnitude_from_enemy_to_me = nil,
+	bullet_start_pos = nil,
+	bullet_end_pos = nil,
+	log_angle_once = nil,
+	who_we_met_first = nil,
+	set_who_we_met_first = true,
 }
 
 local cheatmenu = {
@@ -101,23 +143,7 @@ local cheatmenu = {
     rage_main = ui.find("Aimbot", "Ragebot", "Main", "Enabled"),
     Hide_shot = ui.find("Aimbot", "Ragebot", "Main", "Hide Shots"),
     Double_tap = ui.find("Aimbot", "Ragebot", "Main", "Double Tap"),
-    Double_tap_lag_options = ui.find("Aimbot", "Ragebot", "Main", "Double Tap", "Lag Options"),
-    Double_tap_FLlimit = ui.find("Aimbot", "Ragebot", "Main", "Double Tap", "Fake Lag Limit"),
-    SSG_hitboxes = ui.find("Aimbot", "Ragebot", "Selection", "SSG-08", "Hitboxes"),
-    SSG_multipoint = ui.find("Aimbot", "Ragebot", "Selection", "SSG-08", "Multipoint"),
-    SSG_multipoint_head = ui.find("Aimbot", "Ragebot", "Selection", "SSG-08", "Multipoint", "Head Scale"),
-    SSG_multipoint_body = ui.find("Aimbot", "Ragebot", "Selection", "SSG-08", "Multipoint", "Body Scale"),
-    SSG_hitchance = ui.find("Aimbot", "Ragebot", "Selection", "SSG-08", "Hit Chance"),
-    SSG_mindmg = ui.find("Aimbot", "Ragebot", "Selection", "SSG-08", "Min. Damage"),
-    SSG_mindmg_delay_shot = ui.find("Aimbot", "Ragebot", "Selection", "SSG-08", "Min. Damage", "Delay Shot"),
-    SSG_baim_mode = ui.find("Aimbot", "Ragebot", "Safety", "SSG-08", "Body Aim"),
-    SSG_baim_mode_disablers = ui.find("Aimbot", "Ragebot", "Safety", "SSG-08", "Body Aim", "Disablers"),
-    SSG_baim_mode_force_on_peek = ui.find("Aimbot", "Ragebot", "Safety", "SSG-08", "Body Aim", "Force on Peek"),
-    SSG_safepoints = ui.find("Aimbot", "Ragebot", "Safety", "SSG-08", "Safe Points"),
     get_autopeek = ui.find("Aimbot", "Ragebot", "Main", "Peek Assist"),
-    get_autopeek_style = ui.find("Aimbot", "Ragebot", "Main", "Peek Assist", "Style"),
-    get_autopeek_mode = ui.find("Aimbot", "Ragebot", "Main", "Peek Assist", "Retreat Mode"),
-    mindmg = ui.find("Aimbot", "Ragebot", "Selection", "Global", "Min. Damage"),
 
     -- Anti Aim
     get_antiaim = ui.find("Aimbot", "Anti Aim", "Angles", "Enabled"),
@@ -125,8 +151,7 @@ local cheatmenu = {
     get_yawbase = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw", "Base"),
     get_yawbase_angle = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw"),
     get_yawbase_offset = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw", "Offset"),
-    get_avoid_backstab = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw", "Avoid Backstab"),
-    get_hidden = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw", "Hidden"),
+
     get_yaw_mod = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw Modifier"),
     get_yaw_mod_degree = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw Modifier", "Offset"),
     get_fakeangles_enabled = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw"),
@@ -136,66 +161,39 @@ local cheatmenu = {
     get_fakeangles_options = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw", "Options"),
     get_freestanding_options = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw", "Freestanding"),
     get_freestanding = ui.find("Aimbot", "Anti Aim", "Angles", "Freestanding"),
-    get_freestanding_disable_yaw_mod = ui.find("Aimbot", "Anti Aim", "Angles", "Freestanding", "Disable Yaw Modifiers"),
-    get_freestanding_body_freestand = ui.find("Aimbot", "Anti Aim", "Angles", "Freestanding", "Body Freestanding"),
-    get_extended_angles = ui.find("Aimbot", "Anti Aim", "Angles", "Extended Angles"),
-    get_extended_angles_pitch = ui.find("Aimbot", "Anti Aim", "Angles", "Extended Angles", "Extended Pitch"),
-    get_extended_angles_roll = ui.find("Aimbot", "Anti Aim", "Angles", "Extended Angles", "Extended Roll"),
     get_fakelag = ui.find("Aimbot", "Anti Aim", "Fake Lag", "Enabled"),
-    get_fakelag_limit = ui.find("Aimbot", "Anti Aim", "Fake Lag", "Limit"),
-    get_fakelag_variability = ui.find("Aimbot", "Anti Aim", "Fake Lag", "Variability"),
     get_fakeduck = ui.find("Aimbot", "Anti Aim", "Misc", "Fake Duck"),
     get_slowwalk = ui.find("Aimbot", "Anti Aim", "Misc", "Slow Walk"),
     get_legmovement = ui.find("Aimbot", "Anti Aim", "Misc", "Leg Movement"),
     
 	-- Misc
-    bhop = ui.find("Miscellaneous", "Main", "Movement", "Bunny Hop"),
-    air_strafe = ui.find("Miscellaneous", "Main", "Movement", "Air Strafe"),
-    air_duck = ui.find("Miscellaneous", "Main", "Movement", "Air Duck"),
-    air_duck_mode = ui.find("Miscellaneous", "Main", "Movement", "Air Duck", "Mode"),
-    windows = ui.find("Miscellaneous", "Main", "Other", "Windows"),
-    fake_latency = ui.find("Miscellaneous", "Main", "Other", "Fake Latency"),
     clantag_nl = ui.find("Miscellaneous", "Main", "In-Game", "Clan Tag"),
-	hitsound = ui.find("Visuals", "World", "Other", "Hit Marker Sound"),
-	
 	scope_overlay = ui.find("Visuals", "World", "Main", "Override Zoom", "Scope Overlay"),
-	
-	
+
 	-- for removing models
-	
 	self_chams = ui.find("Visuals", "Players", "Self", "Chams", "Model"),
 	teammates_chams = ui.find("Visuals", "Players", "Teammates", "Chams", "Model"),
-	enemies_chams = ui.find("Visuals", "Players", "Enemies", "Chams", "Model"),
 	teammates_weapon_chams = ui.find("Visuals", "Players", "Teammates", "Chams", "Weapon"),
-
 }
 
--- MENU   
-local default_primary_theme = color(31, 109, 255)
-local default_secondary_theme = color(255, 110, 110)
-
+-- MENU
 ui.sidebar("KNOCKOUT", ui.get_icon("boxing-glove"))
 local main_info_group = pui.create("Main", "Script Info", 1)
 local group_home = pui.create("Main", "Helpers", 2)
 local group_ragehelpers = pui.create("Rage", "Helpers", 1)
 local group_defensive = pui.create("Defensive", "Defensive Anti-Aim Options", 1)
 local group_defensive_autopull = pui.create("Defensive", "Tazer and Knife Saftey", 2)
---local group_anti_bruteforce_A = pui.create("Anti Bruteforce", "Master", 1)
---local group_anti_bruteforce_B = pui.create("Anti Bruteforce", "Shot Manager", 2)
 
 local group_EXPLOITS = pui.create("Exploits", "Air Lag", 1)
-local group_EXPLOITS_2 = pui.create("Exploits", "Anti-Exploit", 2)
-local group_EXPLOITS_3 = pui.create("Exploits", "Automatic-Teleport", 2)
+local group_EXPLOITS_2 = pui.create("Exploits", "Automatic-Teleport", 2)
 
 local group_conditional_states = pui.create("Conditional-AA","Player States", 1)
-local group_aa_stealer = pui.create("Anti-Aim Stealer","Steal that bitch", 1)
-local group_aa_experiment = pui.create("Experimental Anti-Aim","---", 1)
+-- local group_aa_stealer = pui.create("Anti-Aim Stealer","Steal Enemy Anti-Aim", 1)
+-- local group_aa_experiment = pui.create("Experimental Anti-Aim","---", 1)
 
-local group_visuals_general = pui.create("Visuals [lite]", "A", 1)
-local group_misc_A = pui.create("Miscellaneous","A", 1)
-local group_misc_B = pui.create("Miscellaneous","B", 2)
-
--- configs group isn't a part of PUI because it shouldn't be something thats saved or configed. Otherwise it breaks our configs UI.
+local group_visuals = pui.create("Visuals [lite]", "A", 1)
+local group_misc_main = pui.create("Miscellaneous","Main", 1)
+local group_misc_logging = pui.create("Miscellaneous","Logging", 2)
 local group_configs_create_delete = ui.create("Configuration", "Create or Delete Configs", 1)
 local group_configs_list = ui.create("Configuration","All Configs", 2)
 local group_configs_save_load = ui.create("Configuration","", 2)
@@ -204,8 +202,7 @@ local group_configs_import_export = ui.create("Configuration","Import or Export 
 local menuitems = {
     -- home
     notice_build = main_info_group:label(definitions.lua_build),
-    more_label = main_info_group:label('Have any bugs/issues you would like to report? Add me on discord and send me a DM. I will try to look at it ASAP. @devnrk'),
-	
+    more_label = main_info_group:label('Have any bugs/issues you would like to report? Send me a DM on discord  @devnrk'),
 	
 	configs_list = group_configs_list:combo("Found Configs", definitions.current_configs),
 	configs_currently_loaded = group_configs_list:label("Currently loaded: None"),
@@ -224,7 +221,6 @@ local menuitems = {
 	nade_fix_about = group_home:label("Neverlose causes issues with throwing grenades. For example sometimes it would throw them at your feet and cause you to lose an important battle. This feature tries to resolve this by disabling double tap before you throw a nade."),
 	nade_fix_about_btn = group_home:button("What's this?"),
 	
-	
 	fps_fix = group_home:switch("FPS Enhancement", false, function(gear)
 		local elements = {
 			mitigations = gear:listable('Mitigate', {"Reduced target scanning", "Disable localplayer rendering", "Disable teammate rendering"}),
@@ -234,7 +230,7 @@ local menuitems = {
 
 	aspect_ratio = group_home:slider('Aspect Ratio', 0, 50, 0.0, 0.1),
 	
-	rage_helpers = group_ragehelpers:switch("Enhance Ragebot", false),
+	-- rage_helpers = group_ragehelpers:switch("Enhance Ragebot", false),
 
     exploit_l1 = group_EXPLOITS:label("Perfectly break LC. Jump with Double Tap enabled. Low ping required."),
 	exploit_tutorial = group_EXPLOITS:button(ui.get_icon("youtube") .." Exploit Showcase", function()
@@ -242,15 +238,15 @@ local menuitems = {
     end),
     ourexploit = group_EXPLOITS:switch("Air Lag (Bindable)", false),
 	
-	auto_tp = group_EXPLOITS_3:switch("Teleport", false, function(gear)
+	auto_tp = group_EXPLOITS_2:switch("Teleport", false, function(gear)
 		local elements = {
 			type_of_tp = gear:list('Type', {"Default", "DT Slam"}),
 		}
 		
 		return elements, true
 	end),
-	auto_tp_about = group_EXPLOITS_3:label("Attempts to automatically 'DT SLAM' for you which basically means teleporting you to the ground if you peek an enemy while being in air. This helps break lag compensation and instantly kill them shoot them before they could even react."),
-	auto_tp_about_btn = group_EXPLOITS_3:button("What's this?"),
+	auto_tp_about = group_EXPLOITS_2:label("Attempts to automatically 'DT SLAM' for you which basically means teleporting you to the ground if you peek an enemy while being in air. This helps break lag compensation and instantly kill them shoot them before they could even react."),
+	auto_tp_about_btn = group_EXPLOITS_2:button("What's this?"),
 	
     defensive_aa = group_defensive:switch("Defensive AA", false, function(gear)
 		local elements = {
@@ -285,18 +281,18 @@ local menuitems = {
 	end),
 	switch_safe_taser_about = group_defensive_autopull:label("This is a safety feature which tries to pull out a taser or your secondary weapon if a nearby enemy (depending on the range set) has their knife or taser pulled out. Basically an attempt to save you from being tased or shanked."),
 	switch_safe_taser_about_btn = group_defensive_autopull:button("What's this?"),
-	clan_taga = group_misc_A:switch("Clantag (custom)", false, function(gear)
+	clan_taga = group_misc_main:switch("Clantag (custom)", false, function(gear)
 		local elements = {
 			custom_clan_taga = gear:input("Clantag", "KNOCKOUT")
 		}
 		
 		return elements, true
 	end),
-	killsay_enable = group_misc_A:switch("Kill Say", false),
-	yallah_yallah = group_misc_A:switch("Ideal Tick on shift", false),
-    leg_fucker = group_misc_A:switch("Break LBY", false),
+	killsay_enable = group_misc_main:switch("Kill Say", false),
+	yallah_yallah = group_misc_main:switch("Ideal Tick on shift", false),
+    leg_fucker = group_misc_main:switch("Break LBY", false),
 
-	logs_enable = group_misc_B:switch("Aimbot Logging", false, function(gear)
+	logs_enable = group_misc_logging:switch("Aimbot Logging", false, function(gear)
 		local elements = {
 			aimbot = gear:switch("Ragebot", false),
 			death = gear:switch("Death", false),
@@ -311,23 +307,23 @@ local menuitems = {
     select_aa_state = group_conditional_states:combo("State", {"None", definitions.player_states.STAND, definitions.player_states.WALK, definitions.player_states.RUN, definitions.player_states.CROUCH, definitions.player_states.AIR_CROUCH, definitions.player_states.AIR}),
 	_builder_aa = {},
 	
-	under_crosshair = group_visuals_general:switch("Under Crosshair", false),
+	under_crosshair = group_visuals:switch("Under Crosshair", false),
 	
-	world_hitmarker = group_visuals_general:switch("World Hitmarker", false, function(gear)
+	world_hitmarker = group_visuals:switch("World Hitmarker", false, function(gear)
 		local elements = {
 			world_hitmarker_width = gear:slider('Width', 1, 5, 0.2, 0.1),
 			world_hitmarker_speed = gear:slider('Fade Time', 1, 5, 0.1, 0.1),
 			world_hitmarker_length = gear:slider('Length', 1, 500, 250, 1),
-			world_hitmarker_color = gear:color_picker("Color", default_primary_theme),
+			world_hitmarker_color = gear:color_picker("Color", definitions.default_primary_theme),
 			world_hitmarker_glow = gear:switch("Glow", false),
 			
 		}
 		return elements, true
 	end),
 	
-	custom_scope_overlay = group_visuals_general:switch("Custom Scope Overlay", false, function(gear)
+	custom_scope_overlay = group_visuals:switch("Custom Scope Overlay", false, function(gear)
 		local elements = {
-			scope_color = gear:color_picker("Color", default_primary_theme),
+			scope_color = gear:color_picker("Color", definitions.default_primary_theme),
 			gapx = gear:slider('Offset X', 0, definitions.screen_size().x/2, 50, 1),
 			gapy = gear:slider('Offset Y', 0, definitions.screen_size().y/2, 50, 1),
 			offset = gear:slider('Width', 10, 500, 10, 1),
@@ -337,12 +333,12 @@ local menuitems = {
 	end),
 	
 	--aa_steal = group_aa_stealer:switch('Steal Enemy Anti Aim', false),
-	aa_experiment = group_aa_experiment:switch("Enable Experimental AA", false, function(gear)
-		local elements = {
-			Type = gear:list("Preset Type", {"Distort", "Jitter", "Spin", "Sway Desync", "Randomized Desync"})
-		}
-		return elements, true
-	end),
+	-- aa_experiment = group_aa_experiment:switch("Enable Experimental AA", false, function(gear)
+	-- 	local elements = {
+	-- 		Type = gear:list("Preset Type", {"Distort", "Jitter", "Spin", "Sway Desync", "Randomized Desync"})
+	-- 	}
+	-- 	return elements, true
+	-- end),
 }
 
 menuitems.fps_fix:set_callback(function(self)
@@ -394,8 +390,8 @@ menuitems.auto_tp_about_btn:set_callback(function(self)
 	self:visibility(false)
 end)
 
-local logging_shot_color = menuitems.logs_enable.aimbot:color_picker(default_primary_theme)
-local logging_death_color = menuitems.logs_enable.death:color_picker(default_secondary_theme)
+local logging_shot_color = menuitems.logs_enable.aimbot:color_picker(definitions.default_primary_theme)
+local logging_death_color = menuitems.logs_enable.death:color_picker(definitions.default_secondary_theme)
 
 -- extra menu items for sub tabs or gear icons"
 
@@ -427,72 +423,6 @@ menuitems.defensive_aa_yaw_enable.defensive_aa_yaw_angle:set_callback(function()
 	menuitems.defensive_aa_yaw_enable.defensive_aa_yaw_custom_angle:set_visible(menuitems.defensive_aa_yaw_enable.defensive_aa_yaw_angle:get() == 'Custom' and true or false)
 end, false)
 
-
---[[function update_anti_bruteforce_builder_ui(shots_table)
-
-	-- setting up anti bruteforce shots aa builder
-	for _, shot_name in pairs(shots_table) do
-
-		   local ab_builder_group = pui.create("Anti Bruteforce", shot_name, 2)
-			
-			menuitems._ab_builder[shot_name] = {
-				Pitch = ab_builder_group:combo("Pitch", {"Disabled", "Down", "Fake Down", "Fake Up"}),
-				Yaw_base = ab_builder_group:combo("Yaw Base", {"Disabled", "Backward", "Static"}),
-				Yaw_direction = ab_builder_group:combo("Yaw Direction", {"Local View", "At Target"}),
-				Yaw = ab_builder_group:slider("Yaw Offset", -180, 180, 0, 1),
-				Yaw_mod = ab_builder_group:combo("Jitter Type", {"Disabled", "Center", "Offset", "Random", "Spin", "3-Way", "5-Way"}),
-				jitter_range = ab_builder_group:slider("Range", -180, 180, 0, 1),
-				Desync = ab_builder_group:switch("Desync", false),
-				Inverter = ab_builder_group:switch("Inverter", false),
-				left_limit = ab_builder_group:slider("Left Desync Angle", 0, 60, 60, 1),
-				right_limit = ab_builder_group:slider("Right Desync Angle", 0, 60, 60, 1),
-				Options = ab_builder_group:selectable("Desync Options", {"Avoid Overlap", "Jitter", "Randomize Jitter", "Anti Bruteforce"}),
-				Freestand = ab_builder_group:combo("Freestanding Options", {"Off", "Peek Fake", "Peek Real"})
-			}
-			
-			--pui.setup(menuitems._builder_aa[state_aa])
-	end
-end]]
-
-
---[[menuitems.enable_ab:set_callback(function(self)
-	if self:get() then
-		menuitems.ab_add_shot:disabled(false)
-		menuitems.ab_remove_shot:disabled(false)
-		menuitems.ab_shots:update(definitions.anti_bruteforce_shots)
-		update_anti_bruteforce_builder_ui(definitions.anti_bruteforce_shots)
-	else
-		menuitems.ab_add_shot:disabled(true)
-		menuitems.ab_remove_shot:disabled(true)
-	end
-end)
-
-
-menuitems.ab_add_shot:set_callback(function(self)
-	table.insert(
-		definitions.anti_bruteforce_shots,
-		'Shot no.' .. tostring(#definitions.anti_bruteforce_shots + 1)
-	)
-	
-	menuitems.ab_shots:update(definitions.anti_bruteforce_shots)
-	update_anti_bruteforce_builder_ui(definitions.anti_bruteforce_shots)
-	
-end)
-
-menuitems.ab_remove_shot:set_callback(function(self)
-	table.remove(
-		definitions.anti_bruteforce_shots
-		--'Shot no.' .. tostring(#definitions.anti_bruteforce_shots + 1)
-	)
-	menuitems.ab_shots:update(definitions.anti_bruteforce_shots)
-	update_anti_bruteforce_builder_ui(definitions.anti_bruteforce_shots)
-	
-end)
-]]
-
-
-
-
 function update_list_for_configs()
 	local result = require("neverlose/mtools").FileSystem:ReadFolder("nl\\scripts\\knockout",true)
 	definitions.current_configs = result
@@ -509,7 +439,7 @@ function update_list_for_configs()
 	end
 end
 	
-update_list_for_configs() -- init
+update_list_for_configs() -- initial call needed
 
 menuitems.export_button:set_callback(function()
 	local config = pui.save()
@@ -522,9 +452,7 @@ menuitems.import_button:set_callback(function()
 end)
 
 -- create and save config
-
 menuitems.configs_create:set_callback(function()
-
 	if menuitems.configs_name:get() == "" or #menuitems.configs_name:get() <= 0 then
 		local say_on_error = "Please enter a valid config name"
 		print_error(say_on_error)
@@ -538,7 +466,6 @@ menuitems.configs_create:set_callback(function()
 	menuitems.configs_name:set("")
 end)
 
-
 menuitems.configs_save:set_callback(function()
 	if menuitems.configs_list:get() == "" then
 		local say_on_error = "Please select a valid config"
@@ -551,7 +478,6 @@ menuitems.configs_save:set_callback(function()
 	files.write("nl\\scripts\\knockout\\" .. menuitems.configs_list:get() .. ".txt", clipboard.get(), false)
 	update_list_for_configs()
 end)
-
 
 -- delete config
 menuitems.configs_delete:set_callback(function()
@@ -598,8 +524,6 @@ menuitems.custom_scope_overlay.sync_gap:set_callback(function(self)
 	menuitems.custom_scope_overlay.gapx:set(menuitems.custom_scope_overlay.gapy:get())
 end)
 
-
-
 -- aa builder
 for _, state_aa in pairs(definitions.player_states) do
 
@@ -623,7 +547,6 @@ for _, state_aa in pairs(definitions.player_states) do
         --pui.setup(menuitems._builder_aa[state_aa])
 end
 
-
 -- create lua dir
 files.create_folder("nl\\scripts\\knockout")
 
@@ -631,7 +554,7 @@ files.create_folder("nl\\scripts\\knockout")
 menuitems.flashCSGO:tooltip("When tabbed out, CS:GO icon in the taskbar will flash indicating a round's beginning.")
 pui.setup(menuitems)
 
--- lets begin!
+-- welcome message
 common.add_notify("Welcome " .. definitions.username(), "Let's get you up and ready for your next fight.")
 
 -- clear table
@@ -760,9 +683,6 @@ menuitems.select_aa_state:set_callback(function(e)
 end)
 menuitems.select_aa_state:set("None")
 
-
-
-
 function overlay_custom_scope()
 -- custom scope overlay
 	if menuitems.custom_scope_overlay:get() and definitions.localplayer()["m_bIsScoped"] then
@@ -797,47 +717,28 @@ function overlay_custom_scope()
 	end
 end
 
-
-
-local elapsed_time = 0
+--[[local elapsed_time = 0
 local duration = 1
 
--- the most retarded linear interpolation
 function linear_interp(start_val, end_val)
 	if elapsed_time < duration then
-	
 		elapsed_time = elapsed_time + (globals.absoluteframetime * 10)
 		local t = math.min(elapsed_time / duration, 1)
-		
-		local interp_val = start_val + (end_val - start_val) * t
-		
+		local interp_val = start_val + (end_val - start_val) * t	
 		return interp_val
-		
 	end
 end
 
 function linear_interp_reverse(start_val, end_val)
 	if elapsed_time < duration then
-	
 		elapsed_time = elapsed_time + (globals.absoluteframetime * 10)
 		local t = math.min(elapsed_time / duration, 1)
-		
 		local interp_val = end_val + (start_val - end_val) * t
-		
 		return interp_val
-		
 	end
-end
+end]]
 
-local all_indicators = {
-	"[DEV]  KNOCKOUT",
-	"DT",
-	"HS",
-}
-
-local arrow_size = 0
-
-function render_indicators(all_indicators)
+function render_indicators(definitions.all_indicators)
 	if menuitems.under_crosshair:get() then
 		local default_indicator_pos = vector(definitions.screen_size().x/2, definitions.screen_size().y/2 + 15)
 		local alpha = definitions.localplayer().m_bIsScoped and 75 or 255
@@ -869,7 +770,7 @@ function render_indicators(all_indicators)
 			vector(definitions.screen_size().x/2 - 50, definitions.screen_size().y/2 + 10),
 			vector(definitions.screen_size().x/2 - 50, definitions.screen_size().y/2 + 10)
 		)
-		for	i in pairs(all_indicators) do
+		for	i in pairs(definitions.all_indicators) do
 			default_indicator_pos.y = default_indicator_pos.y + 10
 			if i == 2 then
 				indicator_color = cheatmenu.Double_tap:get() and color(0, 255, 0, alpha) or color(0, 0, 0, alpha)
@@ -881,49 +782,15 @@ function render_indicators(all_indicators)
 				default_indicator_pos,
 				indicator_color,
 				"cs", 
-				all_indicators[i]
+				definitions.all_indicators[i]
 			)
 		end
 	end
 end
 
-events.render:set(function()
-	
-	if definitions.localplayer() == nil then return end
-	if not definitions.localplayer():is_alive() then return end
-	
-	overlay_custom_scope()
-	render_indicators(all_indicators)
-
-	--[[render.rect(
-		vector(definitions.get_menu_pos().x, definitions.get_menu_pos().y - 100),
-		vector(definitions.get_menu_pos().x + definitions.get_menu_size().x, definitions.get_menu_pos().y - 100 + 90),
-		color(0, 0, 0, definitions.get_menu_alpha() * 255),
-		10
-		
-	)
-
-	render.rect_outline(
-		vector(definitions.get_menu_pos().x, definitions.get_menu_pos().y - 100),
-		vector(definitions.get_menu_pos().x + definitions.get_menu_size().x, definitions.get_menu_pos().y - 100 + 90),
-		color(255, 255, 255, definitions.get_menu_alpha() * 255),
-		1.5,
-		10
-	)]]
-end)
-
-local function instant_charge()
-    if definitions.shot_fired >= menuitems.instant_charge_aftershots:get() then
-        rage.exploit:force_charge()
-        definitions.shot_fired = 0
-    end
-end
-
-
 function run_disable_rendering_models(ui_element)
 	if menuitems.fps_fix:get() then
-	
-		-- why the fuck am I running 3 for loops here? Holy shit I suck at this. THIS IS TERRIBLE PRACTICE. DON'T COPY. THIS FUNCTION IS WRITTEN BY A SPED.
+		-- why the fuck am I running 3 for loops here? THIS IS TERRIBLE PRACTICE. DON'T COPY. THIS FUNCTION IS WRITTEN BY A SPED.
 	
 		for _, mat in ipairs(definitions.localplayer_materials) do
 			if ui_element:get(2) then
@@ -934,7 +801,6 @@ function run_disable_rendering_models(ui_element)
 				mat:var_flag(2, false)
 			end	
 		end
-		
 		
 		for _, mat in ipairs(definitions.team8s_materials) do
 			if ui_element:get(3) then
@@ -957,7 +823,6 @@ function run_disable_rendering_models(ui_element)
 		end
 	end
 end
-
 
 function run_ragebot_fps_fix()
 	if menuitems.fps_fix:get() and menuitems.fps_fix.mitigations:get(1) then
@@ -996,7 +861,6 @@ function run_nade_fix()
     end
 end
 
-
 function run_leg_breaker()
 	-- leg breaker
     if menuitems.leg_fucker:get() then
@@ -1004,19 +868,6 @@ function run_leg_breaker()
     else
         cheatmenu.get_legmovement:override()
     end
-end
-
-function run_instant_dt_charge()
-	-- instant double fire recharge (selectable)
-	if menuitems.instant_charge:get() then
-		if menuitems.instant_charge.instant_charge_weapons:get(1) and get_weapon_name(definitions.localplayer()) == ("weapon_scar20" or "weapon_g3sg1") then
-			instant_charge()
-		end
-
-		if menuitems.instant_charge.instant_charge_weapons:get(2) and get_weapon_name(definitions.localplayer()) == "weapon_deagle" then
-			instant_charge()
-		end
-	end
 end
 
 
@@ -1062,14 +913,15 @@ function run_defensive_aa(cmd, in_air)
 				-- threat check
 				if triggers:get(2) and entity.get_threat(true) == nil then return end
 
+				-- force defensive before checking for disablers
+				if menuitems.defensive_aa.force_defensive:get() then
+					cmd.force_defensive = true
+				end
+
 				-- disablers check (on knfie out)
 				if menuitems.defensive_aa.disablers:get(1) and get_weapon_name(definitions.localplayer()) == 'weapon_knife' then return end
 				-- disablers check (on fake lag)
 				if menuitems.defensive_aa.disablers:get(2) and (not cheatmenu.Double_tap:get() and not cheatmenu.Hide_shot:get()) and cheatmenu.get_fakelag:get() then return end
-
-				if menuitems.defensive_aa.force_defensive:get() then
-					cmd.force_defensive = true
-				end
 				
 				if globals.tickcount % 2 == 0 then
 					-- our flick var
@@ -1170,28 +1022,23 @@ function run_safety_swap()
     end
 end
 
-local our_trace_z_offset = 0
-local check_for_tp_after_air_duration = 0.2 -- how long after we jump or are in air that the teleport logic should run.
-local tp_once = true
-local visual_trace_color = color(255)
-
 function run_auto_tp(in_air)
 	if menuitems.auto_tp:get() then
 		if menuitems.auto_tp.type_of_tp:get() == 1 then
 			if in_air and entity.get_threat(true) then
-				if tp_once then
+				if definitions.tp_once then
 					rage.exploit:force_teleport()
-					tp_once = false
+					definitions.tp_once = false
 				end
 			else
-				tp_once = true
+				definitions.tp_once = true
 			end
 		elseif menuitems.auto_tp.type_of_tp:get() == 2 then
 			local our_trace_start = definitions.localplayer():get_origin()
-			local our_trace_end = vector(definitions.localplayer():get_origin().x, definitions.localplayer():get_origin().y, definitions.localplayer():get_origin().z - our_trace_z_offset)
+			local our_trace_end = vector(definitions.localplayer():get_origin().x, definitions.localplayer():get_origin().y, definitions.localplayer():get_origin().z - definitions.our_trace_z_offset)
 			
 			-- if on ground
-			if definitions.localplayer():get_anim_state().duration_in_air >= check_for_tp_after_air_duration then
+			if definitions.localplayer():get_anim_state().duration_in_air >= definitions.check_for_tp_after_air_duration then
 			
 				if entity.get_threat(true) == nil then return end
 				
@@ -1203,54 +1050,38 @@ function run_auto_tp(in_air)
 				if our_trace:did_hit() then
 					local distance_from_ground = math.abs(our_trace_start.z - our_trace.end_pos.z)
 					if distance_from_ground <= 27 then
-						if tp_once then
+						if definitions.tp_once then
 							rage.exploit:force_teleport()
-							tp_once = false
+							definitions.tp_once = false
 						end
 					end	
 				else
-					our_trace_z_offset = our_trace_z_offset + 200
-					tp_once = true
+					definitions.our_trace_z_offset = definitions.our_trace_z_offset + 200
+					definitions.tp_once = true
 				end
 			else
-				our_trace_z_offset = 0
+				definitions.our_trace_z_offset = 0
 			end
 		end
 	end
 end
-
-local entity_that_shot = nil
-local vec_from_enemy_to_me = nil
-local magnitude_from_enemy_to_me = nil
-
-local bullet_start_pos = nil
-local bullet_end_pos = nil
-
-local log_angle_once = nil
-
-local who_we_met_first = nil
-
-local set_who_we_met_first = true
-
-
 
 -- under contruction
 function run_anti_bruteforce()
 	-- checking if we are alive and enemy isn't nil
 	-- initial desync switch on threat
 	if entity.get_threat(true) then
-		if set_who_we_met_first then
-			who_we_met_first = entity.get_threat(true)
+		if definitions.set_who_we_met_first then
+			definitions.who_we_met_first = entity.get_threat(true)
 			cheatmenu.inverter:set(cheatmenu.inverter:get() and false or true)
-			set_who_we_met_first = false
+			definitions.set_who_we_met_first = false
 		end
 	end
 
 	-- if we are dead or if the guy who shot is not who we just saw 
-	if entity_that_shot ~= who_we_met_first then
-		--render_impact = false 
-		bullet_start_pos = nil
-		bullet_end_pos = nil
+	if definitions.entity_that_shot ~= definitions.who_we_met_first then
+		definitions.bullet_start_pos = nil
+		definitions.bullet_end_pos = nil
 		cheatmenu.inverter:override()
 		cheatmenu.rightlimit:override()
 		cheatmenu.leftlimit:override()
@@ -1261,20 +1092,20 @@ function run_anti_bruteforce()
 	-- if the person who shot was the one we first initially met or peeked (or they peeked)
 	
 	-- checking if enemy has shot
-	if bullet_start_pos ~= nil and bullet_end_pos ~= nil then
+	if definitions.bullet_start_pos ~= nil and definitions.bullet_end_pos ~= nil then
 		-- enemy and bullet vector calc
-		local vec_from_enemy_to_bullet_impact = bullet_end_pos - bullet_start_pos
-		local magnitude_of_enemy_to_bullet_impact = bullet_end_pos:dist(bullet_start_pos)
+		local vec_from_enemy_to_bullet_impact = definitions.bullet_end_pos - definitions.bullet_start_pos
+		local magnitude_of_enemy_to_bullet_impact = definitions.bullet_end_pos:dist(definitions.bullet_start_pos)
 		
 		-- shot angle calc
-		local dot_product = (vec_from_enemy_to_me.x * vec_from_enemy_to_bullet_impact.x) + (vec_from_enemy_to_me.y * vec_from_enemy_to_bullet_impact.y) + (vec_from_enemy_to_me.z * vec_from_enemy_to_bullet_impact.z)
-		local cosine_of_angle = dot_product / (magnitude_from_enemy_to_me * magnitude_of_enemy_to_bullet_impact)
+		local dot_product = (definitions.vec_from_enemy_to_me.x * vec_from_enemy_to_bullet_impact.x) + (definitions.vec_from_enemy_to_me.y * vec_from_enemy_to_bullet_impact.y) + (definitions.vec_from_enemy_to_me.z * vec_from_enemy_to_bullet_impact.z)
+		local cosine_of_angle = dot_product / (definitions.magnitude_from_enemy_to_me * magnitude_of_enemy_to_bullet_impact)
 		
 		-- shot side calc
 		local cross_product = vector(
-			vec_from_enemy_to_me.y * vec_from_enemy_to_bullet_impact.z - vec_from_enemy_to_me.z * vec_from_enemy_to_bullet_impact.y,
-			vec_from_enemy_to_me.z * vec_from_enemy_to_bullet_impact.x - vec_from_enemy_to_me.x * vec_from_enemy_to_bullet_impact.z, 
-			vec_from_enemy_to_me.x * vec_from_enemy_to_bullet_impact.y - vec_from_enemy_to_me.y * vec_from_enemy_to_bullet_impact.x
+			definitions.vec_from_enemy_to_me.y * vec_from_enemy_to_bullet_impact.z - definitions.vec_from_enemy_to_me.z * vec_from_enemy_to_bullet_impact.y,
+			definitions.vec_from_enemy_to_me.z * vec_from_enemy_to_bullet_impact.x - definitions.vec_from_enemy_to_me.x * vec_from_enemy_to_bullet_impact.z, 
+			definitions.vec_from_enemy_to_me.x * vec_from_enemy_to_bullet_impact.y - definitions.vec_from_enemy_to_me.y * vec_from_enemy_to_bullet_impact.x
 		)
 		
 		local calc_angle = 180 - math.floor(math.deg(math.acos(cosine_of_angle)))
@@ -1315,15 +1146,13 @@ function run_anti_bruteforce()
 		end]]
 
 	
-		--[[if log_angle_once then
+		--[[if definitions.log_angle_once then
 			--print(calc_angle)
-			utils.console_exec("say " .. "KNOCKOUT: " .. entity_that_shot:get_name() .. " Shot " .. tostring(calc_angle) .. " degrees to the " .. calc_side)
-			log_angle_once = false
+			utils.console_exec("say " .. "KNOCKOUT: " .. definitions.entity_that_shot:get_name() .. " Shot " .. tostring(calc_angle) .. " degrees to the " .. calc_side)
+			definitions.log_angle_once = false
 		end]]
 	end
 end
-
-
 
 local function nade_held()
 	if get_weapon_name(entity.get_local_player()) == "weapon_smokegrenade" or get_weapon_name(entity.get_local_player()) == "weapon_hegrenade" or get_weapon_name(entity.get_local_player()) == "weapon_flashgrenade" or get_weapon_name(entity.get_local_player()) == "weapon_incgrenade" or get_weapon_name(entity.get_local_player()) == "weapon_molotov" then
@@ -1331,16 +1160,6 @@ local function nade_held()
 	end
 	return false
 end
-
-
-local sway_add_desync = 0
-local sway_add_factor = 5
-local old_angles = {}
-local jitter_idx = 1
-local distortion_minmax = {-40, 40}
-local distortion_cur_angle = 0
-local swing_right = false
-local spin_factor = 0
 
 local function run_non_desync_aa(in_air, cmd)
 
@@ -1368,35 +1187,35 @@ local function run_non_desync_aa(in_air, cmd)
 			
 			if menuitems.aa_experiment.Type:get() == 1 then
 				-- distortion
-				if distortion_cur_angle > distortion_minmax[2] then
-					swing_right = false
-				elseif distortion_cur_angle < distortion_minmax[1] then
-					swing_right = true		
+				if definitions.distortion_cur_angle > definitions.distortion_minmax[2] then
+					definitions.swing_right = false
+				elseif definitions.distortion_cur_angle < definitions.distortion_minmax[1] then
+					definitions.swing_right = true		
 				end
-				if swing_right then
-					distortion_cur_angle = distortion_cur_angle + (math.abs(distortion_minmax[2] / 2) + math.random(-10, 10))
+				if definitions.swing_right then
+					definitions.distortion_cur_angle = definitions.distortion_cur_angle + (math.abs(definitions.distortion_minmax[2] / 2) + math.random(-10, 10))
 				else
-					distortion_cur_angle = distortion_cur_angle - (math.abs(distortion_minmax[2] / 2) + math.random(-10, 10))
+					definitions.distortion_cur_angle = definitions.distortion_cur_angle - (math.abs(definitions.distortion_minmax[2] / 2) + math.random(-10, 10))
 				end
-				--cheatmenu.get_yawbase_offset:override(distortion_cur_angle)
-				cmd.view_angles.y = target_yaw + distortion_cur_angle
+				--cheatmenu.get_yawbase_offset:override(definitions.distortion_cur_angle)
+				cmd.view_angles.y = target_yaw + definitions.distortion_cur_angle
 			elseif menuitems.aa_experiment.Type:get() == 2 then
 				-- jitter
 				local jitter_angles = {-math.random(-60, 40), math.random(-40, 60)}
 				
-				if #old_angles == 0 then
-					old_angles[1] = jitter_angles[1]
-					old_angles[2] = jitter_angles[2]
+				if #definitions.old_angles == 0 then
+					definitions.old_angles[1] = jitter_angles[1]
+					definitions.old_angles[2] = jitter_angles[2]
 				else
-					--print_dev(jitter_angles[1], " ", old_angles[1], " ", jitter_angles[2], " ", old_angles[2])
-					if old_angles[1] == jitter_angles[1] or old_angles[2] == jitter_angles[2] then return end
+					--print_dev(jitter_angles[1], " ", definitions.old_angles[1], " ", jitter_angles[2], " ", definitions.old_angles[2])
+					if definitions.old_angles[1] == jitter_angles[1] or definitions.old_angles[2] == jitter_angles[2] then return end
 				end
 					
-				jitter_idx = jitter_idx + 1
+				definitions.jitter_idx = definitions.jitter_idx + 1
 				
-				if jitter_idx > # jitter_angles then jitter_idx = 1 end
+				if definitions.jitter_idx > # jitter_angles then definitions.jitter_idx = 1 end
 				
-				local cur_angle = jitter_angles[jitter_idx]
+				local cur_angle = jitter_angles[definitions.jitter_idx]
 				
 				cmd.view_angles.y = target_yaw + cur_angle
 				
@@ -1405,19 +1224,19 @@ local function run_non_desync_aa(in_air, cmd)
 				if entity.get_threat(true) then
 					cheatmenu.get_antiaim:override()
 				else
-					spin_factor = spin_factor + 25
-					cmd.view_angles.y = cmd.view_angles.y + spin_factor
+					definitions.spin_factor = definitions.spin_factor + 25
+					cmd.view_angles.y = cmd.view_angles.y + definitions.spin_factor
 				end
 			elseif menuitems.aa_experiment.Type:get() == 4 then
 				cheatmenu.get_antiaim:override()
 				
 				--sway desync
-				if sway_add_desync > 60 or sway_add_desync < 0 then
-					sway_add_factor = sway_add_factor * -1
+				if definitions.sway_add_desync > 60 or definitions.sway_add_desync < 0 then
+					definitions.sway_add_factor = definitions.sway_add_factor * -1
 				end
-				sway_add_desync = sway_add_desync + sway_add_factor
-				cheatmenu.leftlimit:override(sway_add_desync)
-				cheatmenu.rightlimit:override(sway_add_desync)
+				definitions.sway_add_desync = definitions.sway_add_desync + definitions.sway_add_factor
+				cheatmenu.leftlimit:override(definitions.sway_add_desync)
+				cheatmenu.rightlimit:override(definitions.sway_add_desync)
 			elseif menuitems.aa_experiment.Type:get() == 5 then
 				cheatmenu.get_antiaim:override()
 			
@@ -1476,34 +1295,11 @@ local function run_aa_stealer(cmd, in_air)
 end
 
 
-events.createmove:set(function(cmd)
-
-    if definitions.localplayer() == nil then 
-		return 
-	end
-	
-	local prop = definitions.localplayer()["m_fFlags"]
-    local in_air = (prop == 256 or prop == 262)
-
-	run_ragebot_fps_fix()
-	run_disable_rendering_models(menuitems.fps_fix.mitigations)
-	run_non_desync_aa(in_air, cmd)
-    run_air_lag(in_air)
-	run_nade_fix()
-	run_leg_breaker()
-	run_update_conditional_aa()
-	run_defensive_aa(cmd, in_air)
-	run_safety_swap()
-	run_auto_tp(in_air)
-	--run_aa_stealer(cmd, in_air)
-end)
-
-
 function run_killsay(e)
     -- killsay
     if menuitems.killsay_enable:get() then
         if e.target["m_iHealth"] == (0 or nil) then
-            utils.console_exec("say " .. killsays[math.random(#killsays)]) -- killsays[math.random(#killsays)] -> pick a random string of says from the killsays table
+            utils.console_exec("say " .. definitions.killsays[math.random(#definitions.killsays)])
         end
     end
 end
@@ -1581,15 +1377,6 @@ function run_shot_logs(e)
     end
 end
 
-events.aim_ack:set(function(e)
-
-    definitions.shot_fired = definitions.shot_fired + 1
-	-- "e" is our event. this returns values from the event. Like who shot. Miss or HIT reasons, etc.
-	run_killsay(e)
-	run_hideshots_ideal_tick()
-	run_shot_logs(e)
-end)
-
 local function run_death_logs(e)
 
     if menuitems.logs_enable.death:get() then
@@ -1637,34 +1424,7 @@ local function run_death_logs(e)
 		end
     end
 end
--- killsay
-events.player_death:set(function(e)
-	local who_died = entity.get(e.userid, true)
-	if who_died == definitions.localplayer() then
-		run_death_logs(e)
-		definitions.bruteforce_counter = 0
-		bullet_start_pos = nil
-		bullet_end_pos = nil
-		cheatmenu.inverter:override()
-		cheatmenu.rightlimit:override()
-		cheatmenu.leftlimit:override()
-	end
-end)
 
-events.round_start:set(function()
-	if menuitems.clan_taga:get() then
-		cheatmenu.clantag_nl:override(false)
-		common.set_clan_tag(menuitems.clan_taga.custom_clan_taga:get())
-	end
-
-	if definitions.localplayer() ~= nil then
-		shot = 1
-		flashCSGOWindow()
-		definitions.localplayer():set_icon("https://img.icons8.com/?size=100&id=RqQeO1sLIHFS&format=png&color=000000")
-	end
-end)
-
-local new_random_directions = {}
 local function generate_random_directions()
 	-- generate lines
 	for i = 1, definitions.num_of_lines do 
@@ -1676,33 +1436,27 @@ local function generate_random_directions()
 			z = math.cos(phi)
 		}
 		-- add random direction to our table
-		table.insert(new_random_directions, direction)
+		table.insert(definitions.new_random_directions, direction)
 	end
 end
 
 -- start and end coordinates for our new lines
-local new_lines_from_random_directions = {}
 local function generate_new_line_postions(impact_point)
-	for i, direction in ipairs(new_random_directions) do
-		table.insert(new_lines_from_random_directions, 
+	for i, direction in ipairs(definitions.new_random_directions) do
+		table.insert(definitions.new_lines_from_random_directions, 
 		{
 			start = vector(
-				impact_point.x + (definitions.start_line_length + definitions.start_line_offset) * new_random_directions[i].x,
-				impact_point.y + (definitions.start_line_length + definitions.start_line_offset) * new_random_directions[i].y,
-				impact_point.z + (definitions.start_line_length + definitions.start_line_offset) * new_random_directions[i].z
+				impact_point.x + (definitions.start_line_length + definitions.start_line_offset) * definitions.new_random_directions[i].x,
+				impact_point.y + (definitions.start_line_length + definitions.start_line_offset) * definitions.new_random_directions[i].y,
+				impact_point.z + (definitions.start_line_length + definitions.start_line_offset) * definitions.new_random_directions[i].z
 			)
 		})
 	end
 end
 
-local extending = true
-
 local function render_world_hitmarker(ctx)
 
-	-- stop adding coordinates for lines after the number of lines specified like 12
-	-- if we don't do this we will render unlimited lines and quickly brick our computer :(
-	
-	if not (#new_random_directions >= definitions.num_of_lines) then
+	if not (#definitions.new_random_directions >= definitions.num_of_lines) then
 		generate_random_directions()
 		generate_new_line_postions(definitions.aim_points)
 	end
@@ -1710,14 +1464,14 @@ local function render_world_hitmarker(ctx)
 	local max_line_length = menuitems.world_hitmarker.world_hitmarker_length:get()
 	local hitmarker_speed = menuitems.world_hitmarker.world_hitmarker_speed:get()  / 10
 	
-	for i, line in ipairs(new_lines_from_random_directions) do
-		if extending then
+	for i, line in ipairs(definitions.new_lines_from_random_directions) do
+		if definitions.extending then
 			-- extend until length hits max length
 			definitions.end_line_length = definitions.end_line_length + hitmarker_speed
 	
 			if definitions.end_line_length >= max_line_length then
 				definitions.end_line_length = max_line_length
-				extending = false
+				definitions.extending = false
 			end
 			
 		else
@@ -1733,17 +1487,16 @@ local function render_world_hitmarker(ctx)
 		
 		
 		local start = vector(
-			line.start.x + definitions.start_line_length * new_random_directions[i].x,
-			line.start.y + definitions.start_line_length * new_random_directions[i].y,
-			line.start.z + definitions.start_line_length * new_random_directions[i].z
+			line.start.x + definitions.start_line_length * definitions.new_random_directions[i].x,
+			line.start.y + definitions.start_line_length * definitions.new_random_directions[i].y,
+			line.start.z + definitions.start_line_length * definitions.new_random_directions[i].z
 		)
 	
 		local l_end = vector(
-			line.start.x + definitions.end_line_length * new_random_directions[i].x,
-			line.start.y + definitions.end_line_length * new_random_directions[i].y,
-			line.start.z + definitions.end_line_length * new_random_directions[i].z
+			line.start.x + definitions.end_line_length * definitions.new_random_directions[i].x,
+			line.start.y + definitions.end_line_length * definitions.new_random_directions[i].y,
+			line.start.z + definitions.end_line_length * definitions.new_random_directions[i].z
 		)
-	
 		
 		local flags = menuitems.world_hitmarker.world_hitmarker_glow:get() and "lwg" or "lw"
 
@@ -1756,57 +1509,93 @@ local function render_world_hitmarker(ctx)
 			menuitems.world_hitmarker.world_hitmarker_color:get()
 		)
 	end
-	
+end
+
+local function is_in_air()
+	local prop = definitions.localplayer()["m_fFlags"]
+    local air = (prop == 256 or prop == 262)
+	if air then
+		return true
+	end
+	return false
 end
 
 
-local render_impact = false
+events.createmove:set(function(cmd)
+	if definitions.localplayer() == nil then return end
+	if not definitions.localplayer():is_alive() then return end
 
+	local in_air = is_in_air()
+	run_ragebot_fps_fix()
+	run_disable_rendering_models(menuitems.fps_fix.mitigations)
+	-- run_non_desync_aa(in_air, cmd)
+    run_air_lag(in_air)
+	run_nade_fix()
+	run_leg_breaker()
+	run_update_conditional_aa()
+	run_defensive_aa(cmd, in_air)
+	run_safety_swap()
+	run_auto_tp(in_air)
+	--run_aa_stealer(cmd, in_air)
+end)
 
--- check for enemy shot
--- trace ray from enemy position to impact point
--- get distance from trace to current head pos (for hypotenuse)
--- trig to get angle (angle from shot origin to my head pos)
+events.player_death:set(function(e)
+	local who_died = entity.get(e.userid, true)
+	if who_died == definitions.localplayer() then
+		run_death_logs(e)
+		definitions.bruteforce_counter = 0
+		definitions.bullet_start_pos = nil
+		definitions.bullet_end_pos = nil
+		cheatmenu.inverter:override()
+		cheatmenu.rightlimit:override()
+		cheatmenu.leftlimit:override()
+	end
+end)
 
--- we now have the angle
--- run our anti bruteforce logic
+events.round_start:set(function()
+	if menuitems.clan_taga:get() then
+		cheatmenu.clantag_nl:override(false)
+		common.set_clan_tag(menuitems.clan_taga.custom_clan_taga:get())
+	end
 
+	if definitions.localplayer() == nil then return end
+	shot = 1
+	flashCSGOWindow()
+	definitions.localplayer():set_icon("https://img.icons8.com/?size=100&id=RqQeO1sLIHFS&format=png&color=000000")
+end)
+
+events.aim_ack:set(function(e)
+	if definitions.localplayer() == nil then return end
+	if not definitions.localplayer():is_alive() then return end
+	run_killsay(e)
+	run_hideshots_ideal_tick()
+	run_shot_logs(e)
+end)
 
 events.render_glow:set(function(ctx)
 	if definitions.localplayer() == nil then return end
-	
 	if menuitems.world_hitmarker:get() and definitions.aim_points ~= nil then
 		-- if we are not alive or no shot positon is available return.
 		-- render lines logic based of these points.
 		render_world_hitmarker(ctx)
 	end
-	
-	--[[ctx:render( 
-		bullet_start_pos,
-		bullet_end_pos,
-		0.2, 
-		'lw', 
-		color(255, 0, 0)
-	)]]
-	
-	-- What the dist() basically does 
-	-- math.sqrt(math.pow(vector.x, 2) + math.pow(vector.y, 2) + math.pow(vector.z, 2))
 end)
 
-
+events.render:set(function()
+	if definitions.localplayer() == nil then return end
+	if not definitions.localplayer():is_alive() then return end
+	overlay_custom_scope()
+	render_indicators(definitions.all_indicators)
+end)
 
 events.bullet_impact:set(function(e)
-
-	entity_that_shot = entity.get(e.userid, true)
-
-	
-	if entity_that_shot == entity.get_threat(true) then
-		log_angle_once = true
-		bullet_start_pos = entity_that_shot:get_origin()
-		bullet_end_pos = vector(e.x, e.y, e.z)
-		vec_from_enemy_to_me = entity_that_shot:get_origin() - definitions.localplayer():get_origin()
-		magnitude_from_enemy_to_me = entity_that_shot:get_origin():dist(definitions.localplayer():get_origin())
-		--render_impact = true
+	definitions.entity_that_shot = entity.get(e.userid, true)
+	if definitions.entity_that_shot == entity.get_threat(true) then
+		definitions.log_angle_once = true
+		definitions.bullet_start_pos = definitions.entity_that_shot:get_origin()
+		definitions.bullet_end_pos = vector(e.x, e.y, e.z)
+		definitions.vec_from_enemy_to_me = definitions.entity_that_shot:get_origin() - definitions.localplayer():get_origin()
+		definitions.magnitude_from_enemy_to_me = definitions.entity_that_shot:get_origin():dist(definitions.localplayer():get_origin())
 		definitions.bruteforce_counter = definitions.bruteforce_counter + 1
 	else
 		definitions.bruteforce_counter = 0
@@ -1815,17 +1604,16 @@ end)
 
 events.aim_fire:set(function(e)
 	-- on this event, clear any old line coordinates so that we only render hitmarker for one enemy at a time. Saves shit TON of FPS.
-	clear_table(new_random_directions)
-	clear_table(new_lines_from_random_directions)
+	clear_table(definitions.new_random_directions)
+	clear_table(definitions.new_lines_from_random_directions)
 	definitions.aim_points = nil
 
 	-- one shot at a time. More = shit performance because more points and more rendering. WAY MORE rendering.
 	definitions.aim_points = e.aim
-	extending = true
+	definitions.extending = true
 	definitions.start_line_length = 0
 	definitions.end_line_length = 0
 end)
-
 
 events.shutdown:set(function()
 	for _, mat in ipairs(definitions.localplayer_materials) do
