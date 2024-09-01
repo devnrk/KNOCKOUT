@@ -1,6 +1,8 @@
 -- add max fakelag according to server limit
 -- add visually appealing indicators?
 -- aa stealer (with freestanding checks and option to steal on peek)
+-- maybe add a cheat spoofer?
+
 
 -- loading some great libraries from marketplace. I do NOT take any credit for these libraries. All thanks to their developers.
 local base64 = require("neverlose/base64")
@@ -17,9 +19,6 @@ ffi.cdef[[
 	int PlaySoundA(const char *pszSound, void *hmod, int fdwSound);
 	int remove(const char *filename);
 ]]
-
-
-
 
 -- for playing sounds
 --local winmm = ffi.load("winmm")
