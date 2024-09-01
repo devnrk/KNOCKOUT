@@ -14,8 +14,7 @@ An open sourced script written in Lua for [NeverLose.cc](https://en.neverlose.cc
 - AirLag
 - Anti-Exploit
 - Tickbase Teleport
-- Dynamic Anti-Aim
-- Anti-Aim Stealer
+- Anti-Aim Stealer (soon)
 - Lua Config Saver
 - Grenade Fix
 - FPS Boost: Disable client rendering, teamate rendering, low-aimbot scan
@@ -29,8 +28,7 @@ An open sourced script written in Lua for [NeverLose.cc](https://en.neverlose.cc
 - Logs
 - Word Hitmarker
 - Custom Scope
-- Anti-Bruteforce (disabled)
-- Auto-Saftey (automatically swaps to pistol to prevent stab or tazer)
+- Auto Saftey (automatically swaps to pistol to prevent stab or tazer)
 
 ## Getting Started
 
@@ -41,7 +39,6 @@ An open sourced script written in Lua for [NeverLose.cc](https://en.neverlose.cc
 2. Create a new script from the neverlose in game menu.
 3. Click the three dots beside the script then click on "Edit".
 4. Paste the source code, click "Save" and "Run".
-
 <!-- * Copy paste or drag and drop the file in your CS:GO directory. 
 If you are using neverlose.cc:
 ```
@@ -65,17 +62,19 @@ Co-developer - [ChromemilK](https://github.com/chromemilk)
 
 * 0.6 (latest)
     * Various bug fixes and optimizations.
+    * Cleaned codebase.
     * Slightly changed killsays.
+    * Fixed a bug with defensive anti aim not forcing defensive exploit at all times.
 
 * 0.5
     * Various bug fixes and optimizations.
     * Improvements to the logging system.
 
-* 0.4 (unavailable)
+* 0.4
     * Various bug fixes and optimizations.
     * Altered defensive aa timer.       
 
-* 0.3 (unavailable)
+* 0.3
     * Various bug fixes and optimizations.
     * Reworked UI.
     * Added scope check for indicator's alpha.
@@ -89,7 +88,7 @@ Co-developer - [ChromemilK](https://github.com/chromemilk)
     * Added "Force Defensive" for defensive AA which lowers the odds of being backtracked or hit when defensive is active.
     * Reworked safety taser. Now if you don't have a taser, it will fallback to your secondary weapon. The second option pulls out the next available weapon (could be anything).
 
-* 0.2 (unavailable)
+* 0.2
     * Various bug fixes and optimizations.
     * Fixed clantag sometimes not working.
     * Added random and spin presets for defensive aa.
@@ -98,7 +97,7 @@ Co-developer - [ChromemilK](https://github.com/chromemilk)
     * Reworked leg breaker.
     * Removed Double tap instant recharge.
     <!-- * See [commit change]() or See [release history]() -->
-* 0.1 (unavailable)
+* 0.1
     * Initial Release.
 
 ### License
