@@ -1,4 +1,4 @@
--- KNOCKOUT
+-- KNOCKOUT for neverlose
 
 -- loading some great libraries from marketplace. I do NOT take any credit for these libraries. All thanks to their developers.
 local base64 = require("neverlose/base64")
