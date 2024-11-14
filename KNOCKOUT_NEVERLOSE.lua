@@ -12,10 +12,55 @@ ffi.cdef[[
     int FlashWindow(HWND hWnd, int bInvert);
 ]]
 
+
+local cheatmenu = {
+    -- Ragebot
+    rage_main = ui.find("Aimbot", "Ragebot", "Main", "Enabled"),
+    Hide_shot = ui.find("Aimbot", "Ragebot", "Main", "Hide Shots"),
+    Double_tap = ui.find("Aimbot", "Ragebot", "Main", "Double Tap"),
+    get_autopeek = ui.find("Aimbot", "Ragebot", "Main", "Peek Assist"),
+
+	-- setts
+	min_dmg = ui.find("Aimbot", "Ragebot", "Selection", "Min. Damage"),
+	safepoint = ui.find("Aimbot", "Ragebot", "Safety", "Safe Points"),
+
+    -- Anti Aim
+    get_antiaim = ui.find("Aimbot", "Anti Aim", "Angles", "Enabled"),
+    get_pitch = ui.find("Aimbot", "Anti Aim", "Angles", "Pitch"),
+    get_yawbase = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw", "Base"),
+    get_yawbase_angle = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw"),
+    get_yawbase_offset = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw", "Offset"),
+
+    get_yaw_mod = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw Modifier"),
+    get_yaw_mod_degree = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw Modifier", "Offset"),
+    get_fakeangles_enabled = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw"),
+    inverter = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw", "Inverter"),
+    leftlimit = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw", "Left Limit"),
+    rightlimit = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw", "Right Limit"),
+    get_fakeangles_options = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw", "Options"),
+    get_freestanding_options = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw", "Freestanding"),
+    get_freestanding = ui.find("Aimbot", "Anti Aim", "Angles", "Freestanding"),
+    get_fakelag = ui.find("Aimbot", "Anti Aim", "Fake Lag", "Enabled"),
+    get_fakeduck = ui.find("Aimbot", "Anti Aim", "Misc", "Fake Duck"),
+    get_slowwalk = ui.find("Aimbot", "Anti Aim", "Misc", "Slow Walk"),
+    get_legmovement = ui.find("Aimbot", "Anti Aim", "Misc", "Leg Movement"),
+    
+	-- Misc
+    clantag_nl = ui.find("Miscellaneous", "Main", "In-Game", "Clan Tag"),
+	scope_overlay = ui.find("Visuals", "World", "Main", "Override Zoom", "Scope Overlay"),
+
+	-- for removing models
+	self_chams = ui.find("Visuals", "Players", "Self", "Chams", "Model"),
+	teammates_chams = ui.find("Visuals", "Players", "Teammates", "Chams", "Model"),
+	teammates_weapon_chams = ui.find("Visuals", "Players", "Teammates", "Chams", "Weapon"),
+}
+
+
+
 local definitions = {
 
 	-- globals
-	lua_build = "dev build (v0.6)",
+	lua_build = "Build: LIVE v0.7",
     localplayer = entity.get_local_player,
     screen_size = render.screen_size,
     username = common.get_username,
@@ -41,7 +86,7 @@ local definitions = {
 		"Avoid the loss. Use KNOCKOUT.lua at github.com/devnrk/KNOCKOUT",
 	},
 
-	default_primary_theme = color(31, 109, 255),
+	default_primary_theme = color(86, 145, 255),
 	default_secondary_theme = color(255, 110, 110),
 
 	-- some random vars
@@ -93,13 +138,6 @@ local definitions = {
 	end_line_length = 0,
 	shot_hitbox = nil,
 
-	-- for indicators
-	all_indicators = {
-		"[DEV]  KNOCKOUT",
-		"DT",
-		"HS",
-	},
-
 	-- for ui and configs
 	current_configs = {},
 	get_menu_alpha = ui.get_alpha,
@@ -138,54 +176,19 @@ local definitions = {
 	set_who_we_met_first = true,
 }
 
-local cheatmenu = {
-    -- Ragebot
-    rage_main = ui.find("Aimbot", "Ragebot", "Main", "Enabled"),
-    Hide_shot = ui.find("Aimbot", "Ragebot", "Main", "Hide Shots"),
-    Double_tap = ui.find("Aimbot", "Ragebot", "Main", "Double Tap"),
-    get_autopeek = ui.find("Aimbot", "Ragebot", "Main", "Peek Assist"),
-
-    -- Anti Aim
-    get_antiaim = ui.find("Aimbot", "Anti Aim", "Angles", "Enabled"),
-    get_pitch = ui.find("Aimbot", "Anti Aim", "Angles", "Pitch"),
-    get_yawbase = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw", "Base"),
-    get_yawbase_angle = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw"),
-    get_yawbase_offset = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw", "Offset"),
-
-    get_yaw_mod = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw Modifier"),
-    get_yaw_mod_degree = ui.find("Aimbot", "Anti Aim", "Angles", "Yaw Modifier", "Offset"),
-    get_fakeangles_enabled = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw"),
-    inverter = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw", "Inverter"),
-    leftlimit = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw", "Left Limit"),
-    rightlimit = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw", "Right Limit"),
-    get_fakeangles_options = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw", "Options"),
-    get_freestanding_options = ui.find("Aimbot", "Anti Aim", "Angles", "Body Yaw", "Freestanding"),
-    get_freestanding = ui.find("Aimbot", "Anti Aim", "Angles", "Freestanding"),
-    get_fakelag = ui.find("Aimbot", "Anti Aim", "Fake Lag", "Enabled"),
-    get_fakeduck = ui.find("Aimbot", "Anti Aim", "Misc", "Fake Duck"),
-    get_slowwalk = ui.find("Aimbot", "Anti Aim", "Misc", "Slow Walk"),
-    get_legmovement = ui.find("Aimbot", "Anti Aim", "Misc", "Leg Movement"),
-    
-	-- Misc
-    clantag_nl = ui.find("Miscellaneous", "Main", "In-Game", "Clan Tag"),
-	scope_overlay = ui.find("Visuals", "World", "Main", "Override Zoom", "Scope Overlay"),
-
-	-- for removing models
-	self_chams = ui.find("Visuals", "Players", "Self", "Chams", "Model"),
-	teammates_chams = ui.find("Visuals", "Players", "Teammates", "Chams", "Model"),
-	teammates_weapon_chams = ui.find("Visuals", "Players", "Teammates", "Chams", "Weapon"),
-}
 
 -- MENU
 ui.sidebar("KNOCKOUT", ui.get_icon("boxing-glove"))
 local main_info_group = pui.create("Main", "Script Info", 1)
 local group_home = pui.create("Main", "Helpers", 2)
 local group_ragehelpers = pui.create("Rage", "Helpers", 1)
-local group_defensive = pui.create("Defensive", "Defensive Anti-Aim Options", 1)
-local group_defensive_autopull = pui.create("Defensive", "Tazer and Knife Saftey", 2)
+-- local group_defensive = pui.create("Defensive", "Defensive Anti-Aim Options", 1)
+-- local group_defensive_autopull = pui.create("Defensive", "Tazer and Knife Saftey", 2)
 
-local group_EXPLOITS = pui.create("Exploits", "Air Lag", 1)
+local group_EXPLOITS = pui.create("Exploits", "Defensive Anti-Aim Options", 1)
 local group_EXPLOITS_2 = pui.create("Exploits", "Automatic-Teleport", 2)
+local group_EXPLOITS_3 = pui.create("Exploits", "Tazer and Knife Saftey", 2)
+
 
 local group_conditional_states = pui.create("Conditional-AA","Player States", 1)
 -- local group_aa_stealer = pui.create("Anti-Aim Stealer","Steal Enemy Anti-Aim", 1)
@@ -232,11 +235,11 @@ local menuitems = {
 	
 	-- rage_helpers = group_ragehelpers:switch("Enhance Ragebot", false),
 
-    exploit_l1 = group_EXPLOITS:label("Perfectly break LC. Jump with Double Tap enabled. Low ping required."),
-	exploit_tutorial = group_EXPLOITS:button(ui.get_icon("youtube") .." Exploit Showcase", function()
-        require("neverlose/mtools").Panorama:OpenLink("https://www.youtube.com/watch?v=TBAvlJlRaq4&pp=ygUKdmFuaXR5IGh2aA%3D%3D")
-    end),
-    ourexploit = group_EXPLOITS:switch("Air Lag (Bindable)", false),
+    -- exploit_l1 = group_EXPLOITS:label("Perfectly break LC. Jump with Double Tap enabled. Low ping required."),
+	-- exploit_tutorial = group_EXPLOITS:button(ui.get_icon("youtube") .." Exploit Showcase", function()
+    --     require("neverlose/mtools").Panorama:OpenLink("https://www.youtube.com/watch?v=TBAvlJlRaq4&pp=ygUKdmFuaXR5IGh2aA%3D%3D")
+    -- end),
+    -- ourexploit = group_EXPLOITS:switch("Air Lag (Bindable)", false),
 	
 	auto_tp = group_EXPLOITS_2:switch("Teleport", false, function(gear)
 		local elements = {
@@ -248,23 +251,23 @@ local menuitems = {
 	auto_tp_about = group_EXPLOITS_2:label("Attempts to automatically 'DT SLAM' for you which basically means teleporting you to the ground if you peek an enemy while being in air. This helps break lag compensation and instantly kill them shoot them before they could even react."),
 	auto_tp_about_btn = group_EXPLOITS_2:button("What's this?"),
 	
-    defensive_aa = group_defensive:switch("Defensive AA", false, function(gear)
+    defensive_aa = group_EXPLOITS:switch("Defensive AA", false, function(gear)
 		local elements = {
-			disablers = gear:listable('Disable', {"On knife", "On fakelag"}),
+			disablers = gear:listable('Disable', {"On Knife", "On Fakelag", "On Taser"}),
 			force_defensive = gear:switch('Force Defensive', true),
 		}
 		
 		return elements, true
 	end),
-    defensive_aa_triggers = group_defensive:listable("Triggers", {"In air", "Threat Detected (recommended)"}),
-	defensive_aa_pitch_enable = group_defensive:switch("Modify Pitch", false, function(gear)
+    defensive_aa_triggers = group_EXPLOITS:listable("Triggers", {"In air", "Threat Detected (recommended)"}),
+	defensive_aa_pitch_enable = group_EXPLOITS:switch("Modify Pitch", false, function(gear)
 		local elements = {
 			defensive_aa_pitch_angle = gear:combo('Flick Angle', {'Disabled', 'Down', 'Fake Up', 'Random', 'Custom'}),
 			defensive_aa_pitch_custom_angle = gear:slider('Custom angle', -89.0, 89.0, 0.0, 1.0)
 		}
 		return elements, true
 	end),
-	defensive_aa_yaw_enable = group_defensive:switch("Modify Yaw", false, function(gear)
+	defensive_aa_yaw_enable = group_EXPLOITS:switch("Modify Yaw", false, function(gear)
 		local elements = {
 			defensive_aa_yaw_angle = gear:combo('Flick Angle', {'45', '90', '180', 'Spin', 'Random', 'Custom'}),
 			defensive_aa_yaw_custom_angle = gear:slider('Custom angle', -180, 180, 0, 1),
@@ -272,15 +275,15 @@ local menuitems = {
 		return elements, true
 	end),
 	
-    switch_safe_taser = group_defensive_autopull:switch("Saftey", false, function(gear)
+    switch_safe_taser = group_EXPLOITS_3:switch("Saftey", false, function(gear)
 		local elements = {
 			equip_items = gear:combo("Item to equip", {"Taser (falls back to secondary if not available)", "Next Available (any weapon)"}),
 			range = gear:slider("Range within", 10, 2000, 500, 1),
 		}
 		return elements, true
 	end),
-	switch_safe_taser_about = group_defensive_autopull:label("This is a safety feature which tries to pull out a taser or your secondary weapon if a nearby enemy (depending on the range set) has their knife or taser pulled out. Basically an attempt to save you from being tased or shanked."),
-	switch_safe_taser_about_btn = group_defensive_autopull:button("What's this?"),
+	switch_safe_taser_about = group_EXPLOITS_3:label("This is a safety feature which tries to pull out a taser or your secondary weapon if a nearby enemy (depending on the range set) has their knife or taser pulled out. Basically an attempt to save you from being tased or shanked."),
+	switch_safe_taser_about_btn = group_EXPLOITS_3:button("What's this?"),
 	clan_taga = group_misc_main:switch("Clantag (custom)", false, function(gear)
 		local elements = {
 			custom_clan_taga = gear:input("Clantag", "KNOCKOUT")
@@ -303,17 +306,23 @@ local menuitems = {
 		return elements, true
 	end),
 
-	enable_conditional_aa = group_conditional_states:switch("Conditional AA", false),
+	enable_conditional_aa = group_conditional_states:switch("Conditional-AA", false),
     select_aa_state = group_conditional_states:combo("State", {"None", definitions.player_states.STAND, definitions.player_states.WALK, definitions.player_states.RUN, definitions.player_states.CROUCH, definitions.player_states.AIR_CROUCH, definitions.player_states.AIR}),
 	_builder_aa = {},
 	
-	under_crosshair = group_visuals:switch("Under Crosshair", false),
+	under_crosshair = group_visuals:switch("Under Crosshair", false, function(gear)
+		local elements = {
+			name_color = gear:color_picker("Lua name", definitions.default_primary_theme),
+		}
+		return elements, true
+	end),
+	
 	
 	world_hitmarker = group_visuals:switch("World Hitmarker", false, function(gear)
 		local elements = {
-			world_hitmarker_width = gear:slider('Width', 1, 5, 0.2, 0.1),
+			world_hitmarker_width = gear:slider('Width', 1, 5, 0.3, 0.1),
 			world_hitmarker_speed = gear:slider('Fade Time', 1, 5, 0.1, 0.1),
-			world_hitmarker_length = gear:slider('Length', 1, 500, 250, 1),
+			world_hitmarker_length = gear:slider('Length', 1, 500, 200, 1),
 			world_hitmarker_color = gear:color_picker("Color", definitions.default_primary_theme),
 			world_hitmarker_glow = gear:switch("Glow", false),
 			
@@ -324,9 +333,9 @@ local menuitems = {
 	custom_scope_overlay = group_visuals:switch("Custom Scope Overlay", false, function(gear)
 		local elements = {
 			scope_color = gear:color_picker("Color", definitions.default_primary_theme),
-			gapx = gear:slider('Offset X', 0, definitions.screen_size().x/2, 50, 1),
-			gapy = gear:slider('Offset Y', 0, definitions.screen_size().y/2, 50, 1),
-			offset = gear:slider('Width', 10, 500, 10, 1),
+			gapx = gear:slider('Offset X', 0, definitions.screen_size().x/2, 10, 1),
+			gapy = gear:slider('Offset Y', 0, definitions.screen_size().y/2, 10, 1),
+			offset = gear:slider('Width', 10, 500, 142, 1),
 			sync_gap = gear:button("Automatic Alignment"),
 		}
 		return elements, true
@@ -454,9 +463,9 @@ end)
 -- create and save config
 menuitems.configs_create:set_callback(function()
 	if menuitems.configs_name:get() == "" or #menuitems.configs_name:get() <= 0 then
-		local say_on_error = "Please enter a valid config name"
+		local say_on_error = "KNOCKOUT ERROR: Please enter a valid config name"
 		print_error(say_on_error)
-		common.add_notify("KNOCKOUT", say_on_error)
+		common.add_notify("KNOCKOUT ERROR", say_on_error)
 		return
 	end
     --clipboard.set(json.stringify(pui.save()))
@@ -468,9 +477,9 @@ end)
 
 menuitems.configs_save:set_callback(function()
 	if menuitems.configs_list:get() == "" then
-		local say_on_error = "Please select a valid config"
+		local say_on_error = "KNOCKOUT ERROR: Please select a valid config"
 		print_error(say_on_error)
-		common.add_notify("KNOCKOUT", say_on_error)
+		common.add_notify("KNOCKOUT ERROR", say_on_error)
 		return
 	end
 	
@@ -482,9 +491,9 @@ end)
 -- delete config
 menuitems.configs_delete:set_callback(function()
 	if menuitems.configs_list:get() == "" or #menuitems.configs_list:get() <= 0 then
-		local say_on_error = "No configs to delete."
+		local say_on_error = "KNOCKOUT ERROR: No configs to delete."
 		print_error(say_on_error)
-		common.add_notify("KNOCKOUT", say_on_error)
+		common.add_notify("KNOCKOUT ERROR", say_on_error)
 		return
 	end
 
@@ -495,9 +504,9 @@ end)
 -- load config
 menuitems.configs_load:set_callback(function()
 	if menuitems.configs_list:get() == "" or #menuitems.configs_list:get() <= 0 then
-		local say_on_error = "Please load a config that actually exists."
+		local say_on_error = "KNOCKOUT ERROR: Please load a config that exists already."
 		print_error(say_on_error)
-		common.add_notify("KNOCKOUT", say_on_error)
+		common.add_notify("KNOCKOUT ERROR", say_on_error)
 		return
 	end
 	
@@ -527,7 +536,7 @@ end)
 -- aa builder
 for _, state_aa in pairs(definitions.player_states) do
 
-        local state_aa_group = pui.create("Conditional AA", state_aa, 2)
+        local state_aa_group = pui.create("Conditional-AA", state_aa, 2)
 		
         menuitems._builder_aa[state_aa] = {
             Pitch = state_aa_group:combo("Pitch", {"Disabled", "Down", "Fake Down", "Fake Up"}),
@@ -649,6 +658,35 @@ local function get_weapon_name(player)
     return I_weapon
 end
 
+for state, settings in pairs(menuitems._builder_aa) do
+	if menuitems.select_aa_state:get() == state then
+		settings.Pitch:visibility(true)
+		settings.Yaw_base:visibility(true)
+		settings.Yaw_direction:visibility(true)
+		settings.Yaw:visibility(true)
+		settings.Yaw_mod:visibility(true)
+		settings.jitter_range:visibility(true)
+		settings.Desync:visibility(true)
+		settings.Inverter:visibility(true)
+		settings.left_limit:visibility(true)
+		settings.right_limit:visibility(true)
+		settings.Options:visibility(true)
+		settings.Freestand:visibility(true)
+	else
+		settings.Pitch:visibility(false)
+		settings.Yaw_base:visibility(false)
+		settings.Yaw_direction:visibility(false)
+		settings.Yaw:visibility(false)
+		settings.Yaw_mod:visibility(false)
+		settings.jitter_range:visibility(false)
+		settings.Desync:visibility(false)
+		settings.Inverter:visibility(false)
+		settings.left_limit:visibility(false)
+		settings.right_limit:visibility(false)
+		settings.Options:visibility(false)
+		settings.Freestand:visibility(false)
+	end
+end
 
 menuitems.select_aa_state:set_callback(function(e)
 	for state, settings in pairs(menuitems._builder_aa) do
@@ -681,7 +719,7 @@ menuitems.select_aa_state:set_callback(function(e)
 		end
 	end
 end)
-menuitems.select_aa_state:set("None")
+
 
 function overlay_custom_scope()
 -- custom scope overlay
@@ -738,14 +776,57 @@ function linear_interp_reverse(start_val, end_val)
 	end
 end]]
 
-function render_indicators(definitions.all_indicators)
+
+local indicators = {
+	"KNOCKOUT",
+	"DT",
+	"HS",
+	"DMG: "
+	
+}
+
+local shift = 1
+
+function render_indicators()
 	if menuitems.under_crosshair:get() then
 		local default_indicator_pos = vector(definitions.screen_size().x/2, definitions.screen_size().y/2 + 15)
-		local alpha = definitions.localplayer().m_bIsScoped and 75 or 255
-		local indicator_color = color(255, 255, 255, alpha)
-		local right_arrow_color = rage.antiaim:inverter() and color(0, 0, 0, 50) or color(255, 255, 255, 200)
-		local left_arrow_color = rage.antiaim:inverter() and color(255, 255, 255, 200) or color(0, 0, 0, 50)
-		
+		local alpha = definitions.localplayer().m_bIsScoped and 80 or menuitems.under_crosshair.name_color:get().a
+		local indicator_color = color(menuitems.under_crosshair.name_color:get().r, menuitems.under_crosshair.name_color:get().g, menuitems.under_crosshair.name_color:get().b, alpha)
+		local right_arrow_color = rage.antiaim:inverter() and color(0, 0, 0, 50) or indicator_color
+		local left_arrow_color = rage.antiaim:inverter() and indicator_color or color(0, 0, 0, 50)
+
+		-- sum animation
+		shift = definitions.localplayer().m_bIsScoped and shift + 0.5 or shift - 0.5
+		if shift > 10 then shift = 10 end
+		if shift < 1 then shift = 1 end
+
+		default_indicator_pos.x = default_indicator_pos.x + shift
+
+		-- texts
+		for	i in pairs(indicators) do
+			indicator_color = color(menuitems.under_crosshair.name_color:get().r, menuitems.under_crosshair.name_color:get().g, menuitems.under_crosshair.name_color:get().b, alpha)
+
+			default_indicator_pos.y = default_indicator_pos.y + 10
+
+			if i == 2 then
+				indicator_color = cheatmenu.Double_tap:get() and indicator_color or color(0, 0, 0, alpha)
+
+			elseif i == 3 then
+				indicator_color = cheatmenu.Hide_shot:get() and indicator_color or color(0, 0, 0, alpha)
+			elseif i == 4 then
+				indicators[i] = "DMG: " .. cheatmenu.min_dmg:get()
+			end
+	
+			render.text(
+				2,
+				default_indicator_pos,
+				indicator_color,
+				"s", 
+				indicators[i]
+			)
+		end
+
+
 		--left arrow
 		render.poly(
 			left_arrow_color,
@@ -770,21 +851,6 @@ function render_indicators(definitions.all_indicators)
 			vector(definitions.screen_size().x/2 - 50, definitions.screen_size().y/2 + 10),
 			vector(definitions.screen_size().x/2 - 50, definitions.screen_size().y/2 + 10)
 		)
-		for	i in pairs(definitions.all_indicators) do
-			default_indicator_pos.y = default_indicator_pos.y + 10
-			if i == 2 then
-				indicator_color = cheatmenu.Double_tap:get() and color(0, 255, 0, alpha) or color(0, 0, 0, alpha)
-			elseif i == 3 then
-				indicator_color = cheatmenu.Hide_shot:get() and color(97, 155, 255, alpha) or color(0, 0, 0, alpha)
-			end
-			render.text(
-				2,
-				default_indicator_pos,
-				indicator_color,
-				"cs", 
-				definitions.all_indicators[i]
-			)
-		end
 	end
 end
 
@@ -920,10 +986,15 @@ function run_defensive_aa(cmd, in_air)
 
 				-- disablers check (on knfie out)
 				if menuitems.defensive_aa.disablers:get(1) and get_weapon_name(definitions.localplayer()) == 'weapon_knife' then return end
+
 				-- disablers check (on fake lag)
 				if menuitems.defensive_aa.disablers:get(2) and (not cheatmenu.Double_tap:get() and not cheatmenu.Hide_shot:get()) and cheatmenu.get_fakelag:get() then return end
 				
-				if globals.tickcount % 2 == 0 then
+				-- disablers check (on taser pull out)
+				if menuitems.defensive_aa.disablers:get(3) and get_weapon_name(definitions.localplayer()) == 'weapon_taser' then return end
+
+
+				if math.floor(globals.realtime * 1000) % 2 == 0 then
 					-- our flick var
 					definitions.jitter_side = definitions.jitter_side * -1 -- this var always returns either 1 or -1. So you can think of it as ON and OFF.
 					-- pitch
@@ -1027,11 +1098,12 @@ function run_auto_tp(in_air)
 		if menuitems.auto_tp.type_of_tp:get() == 1 then
 			if in_air and entity.get_threat(true) then
 				if definitions.tp_once then
-					rage.exploit:force_teleport()
+					cheatmenu.Double_tap:override(false)
 					definitions.tp_once = false
 				end
 			else
 				definitions.tp_once = true
+				cheatmenu.Double_tap:override()
 			end
 		elseif menuitems.auto_tp.type_of_tp:get() == 2 then
 			local our_trace_start = definitions.localplayer():get_origin()
@@ -1529,7 +1601,7 @@ events.createmove:set(function(cmd)
 	run_ragebot_fps_fix()
 	run_disable_rendering_models(menuitems.fps_fix.mitigations)
 	-- run_non_desync_aa(in_air, cmd)
-    run_air_lag(in_air)
+    -- run_air_lag(in_air)
 	run_nade_fix()
 	run_leg_breaker()
 	run_update_conditional_aa()
@@ -1581,11 +1653,12 @@ events.render_glow:set(function(ctx)
 	end
 end)
 
+
 events.render:set(function()
 	if definitions.localplayer() == nil then return end
 	if not definitions.localplayer():is_alive() then return end
 	overlay_custom_scope()
-	render_indicators(definitions.all_indicators)
+	render_indicators()
 end)
 
 events.bullet_impact:set(function(e)
