@@ -11,24 +11,19 @@ An open sourced script written in Lua for [NeverLose.cc](https://en.neverlose.cc
 
 - Killsay
 - Defensive Anti-Aim
-- AirLag
 - Anti-Exploit
 - Tickbase Teleport
-- Anti-Aim Stealer (soon)
 - Lua Config Saver
 - Grenade Fix
 - FPS Boost: Disable client rendering, teamate rendering, low-aimbot scan
-- Fast Bullet
 - Aspect Ratio Changer
-- On-Shot Flick
-- Custom YAW
 - Clantag Changer
 - Hide Shots
 - Leg Break
 - Logs
-- Word Hitmarker
+- Word Hitmarker (very naughty)
 - Custom Scope
-- Auto Saftey (automatically swaps to pistol to prevent stab or tazer)
+- Auto Safety (automatically swaps to pistol to prevent stab or tazer)
 
 ## Getting Started
 

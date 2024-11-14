@@ -1049,8 +1049,10 @@ function do_I_have_taser()
 end
 
 function run_safety_swap()
+
 	  -- SAFETY SWAP GUN
     if menuitems.switch_safe_taser:get() then
+
 	
 		local closest_enemy = getclosestenemy()
 		
@@ -1598,6 +1600,7 @@ events.createmove:set(function(cmd)
 	if not definitions.localplayer():is_alive() then return end
 
 	local in_air = is_in_air()
+	-- run_safety_swap()
 	run_ragebot_fps_fix()
 	run_disable_rendering_models(menuitems.fps_fix.mitigations)
 	-- run_non_desync_aa(in_air, cmd)
@@ -1606,7 +1609,6 @@ events.createmove:set(function(cmd)
 	run_leg_breaker()
 	run_update_conditional_aa()
 	run_defensive_aa(cmd, in_air)
-	run_safety_swap()
 	run_auto_tp(in_air)
 	--run_aa_stealer(cmd, in_air)
 end)
