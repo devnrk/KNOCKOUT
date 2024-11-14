@@ -174,6 +174,7 @@ local definitions = {
 	log_angle_once = nil,
 	who_we_met_first = nil,
 	set_who_we_met_first = true,
+	render_lc_indicator = false
 }
 
 
@@ -187,7 +188,9 @@ local group_ragehelpers = pui.create("Rage", "Helpers", 1)
 
 local group_EXPLOITS = pui.create("Exploits", "Defensive Anti-Aim Options", 1)
 local group_EXPLOITS_2 = pui.create("Exploits", "Automatic-Teleport", 2)
-local group_EXPLOITS_3 = pui.create("Exploits", "Tazer and Knife Saftey", 2)
+local group_EXPLOITS_3 = pui.create("Exploits", "Tazer and Knife Saftey", 1)
+local group_EXPLOITS_4 = pui.create("Exploits", "Break LC", 2)
+
 
 
 local group_conditional_states = pui.create("Conditional-AA","Player States", 1)
@@ -235,11 +238,11 @@ local menuitems = {
 	
 	-- rage_helpers = group_ragehelpers:switch("Enhance Ragebot", false),
 
-    -- exploit_l1 = group_EXPLOITS:label("Perfectly break LC. Jump with Double Tap enabled. Low ping required."),
+    exploit_l1 = group_EXPLOITS_4:label("Perfectly break LC. Jump with Double Tap enabled. Low ping required."),
 	-- exploit_tutorial = group_EXPLOITS:button(ui.get_icon("youtube") .." Exploit Showcase", function()
     --     require("neverlose/mtools").Panorama:OpenLink("https://www.youtube.com/watch?v=TBAvlJlRaq4&pp=ygUKdmFuaXR5IGh2aA%3D%3D")
     -- end),
-    -- ourexploit = group_EXPLOITS:switch("Air Lag (Bindable)", false),
+    ourexploit = group_EXPLOITS_4:switch("LC On Peek"),
 	
 	auto_tp = group_EXPLOITS_2:switch("Teleport", false, function(gear)
 		local elements = {
@@ -275,15 +278,15 @@ local menuitems = {
 		return elements, true
 	end),
 	
-    switch_safe_taser = group_EXPLOITS_3:switch("Saftey", false, function(gear)
-		local elements = {
-			equip_items = gear:combo("Item to equip", {"Taser (falls back to secondary if not available)", "Next Available (any weapon)"}),
-			range = gear:slider("Range within", 10, 2000, 500, 1),
-		}
-		return elements, true
-	end),
-	switch_safe_taser_about = group_EXPLOITS_3:label("This is a safety feature which tries to pull out a taser or your secondary weapon if a nearby enemy (depending on the range set) has their knife or taser pulled out. Basically an attempt to save you from being tased or shanked."),
-	switch_safe_taser_about_btn = group_EXPLOITS_3:button("What's this?"),
+    -- switch_safe_taser = group_EXPLOITS_3:switch("Saftey", false, function(gear)
+	-- 	local elements = {
+	-- 		equip_items = gear:combo("Item to equip", {"Taser (falls back to secondary if not available)", "Next Available (any weapon)"}),
+	-- 		range = gear:slider("Range within", 10, 2000, 500, 1),
+	-- 	}
+	-- 	return elements, true
+	-- end),
+	-- switch_safe_taser_about = group_EXPLOITS_3:label("This is a safety feature which tries to pull out a taser or your secondary weapon if a nearby enemy (depending on the range set) has their knife or taser pulled out. Basically an attempt to save you from being tased or shanked."),
+	-- switch_safe_taser_about_btn = group_EXPLOITS_3:button("What's this?"),
 	clan_taga = group_misc_main:switch("Clantag (custom)", false, function(gear)
 		local elements = {
 			custom_clan_taga = gear:input("Clantag", "KNOCKOUT")
@@ -376,12 +379,12 @@ menuitems.aspect_ratio:set_callback(function(self)
 	cvar.r_aspectratio:float(self:get()/10)
 end)
 
-menuitems.switch_safe_taser_about:visibility(false)
-menuitems.switch_safe_taser_about_btn:visibility(true)
-menuitems.switch_safe_taser_about_btn:set_callback(function(self)
-	menuitems.switch_safe_taser_about:visibility(menuitems.switch_safe_taser_about:visibility() and false or true)
-	self:visibility(false)
-end)
+-- menuitems.switch_safe_taser_about:visibility(false)
+-- menuitems.switch_safe_taser_about_btn:visibility(true)
+-- menuitems.switch_safe_taser_about_btn:set_callback(function(self)
+-- 	menuitems.switch_safe_taser_about:visibility(menuitems.switch_safe_taser_about:visibility() and false or true)
+-- 	self:visibility(false)
+-- end)
 
 
 menuitems.nade_fix_about:visibility(false)
@@ -781,8 +784,8 @@ local indicators = {
 	"KNOCKOUT",
 	"DT",
 	"HS",
-	"DMG: "
-	
+	"DMG: ",
+	"LC"
 }
 
 local shift = 1
@@ -815,7 +818,10 @@ function render_indicators()
 				indicator_color = cheatmenu.Hide_shot:get() and indicator_color or color(0, 0, 0, alpha)
 			elseif i == 4 then
 				indicators[i] = "DMG: " .. cheatmenu.min_dmg:get()
+			elseif i == 5 and not definitions.render_lc_indicator then
+				indicator_color = color(0, 0, 0, alpha)
 			end
+			
 	
 			render.text(
 				2,
@@ -902,15 +908,19 @@ function run_ragebot_fps_fix()
 	end
 end
 
-function run_air_lag(in_air)    
+function run_air_lag(in_air)   
     if menuitems.ourexploit:get() and cheatmenu.Double_tap:get() and in_air then
-        if math.floor(globals.curtime  * 1000) % 2  == 0 then
-            cheatmenu.get_fakeduck:override(true)
+		if not entity.get_threat(true) then return end
+		if globals.tickcount % 1.2 == 0.000 then
+			definitions.render_lc_indicator = true
+			cheatmenu.Double_tap:override(false)
         else
-            cheatmenu.get_fakeduck:override()
+			definitions.render_lc_indicator = false
+            cheatmenu.Double_tap:override()
         end
     else
-         cheatmenu.get_fakeduck:override()   
+		definitions.render_lc_indicator = false
+        cheatmenu.Double_tap:override()   
     end
 end
 
@@ -1066,15 +1076,16 @@ function run_safety_swap()
 			if my_dist_to_enemy < menuitems.switch_safe_taser.range:get() then
 
 				local enemy_weapon_name = get_weapon_name(closest_enemy)
+		
 				
 				if enemy_weapon_name == "weapon_taser" then
-				
+
 					definitions.alreadypulledtaser = definitions.alreadypulledtaser + 1
 					
 					if definitions.alreadypulledtaser < 1 then
-					
+
+						
 						if menuitems.switch_safe_taser.equip_items:get() == "Taser (falls back to secondary if not available)" then
-							
 							local have_taser = do_I_have_taser()
 							
 							if have_taser == true then
@@ -1604,8 +1615,8 @@ events.createmove:set(function(cmd)
 	run_ragebot_fps_fix()
 	run_disable_rendering_models(menuitems.fps_fix.mitigations)
 	-- run_non_desync_aa(in_air, cmd)
-    -- run_air_lag(in_air)
 	run_nade_fix()
+	run_air_lag(in_air)
 	run_leg_breaker()
 	run_update_conditional_aa()
 	run_defensive_aa(cmd, in_air)
